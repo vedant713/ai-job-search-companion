@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Bookmark, ExternalLink, MapPin, DollarSign, Clock, Star, Search, Filter } from "lucide-react"
+import { Bookmark, ExternalLink, MapPin, DollarSign, Clock, Star, Search, Filter, Sparkles, Building2, Briefcase } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
 
@@ -36,7 +36,7 @@ const mockJobs: JobRecommendation[] = [
     description:
       "Join our team to build the next generation of web applications using React, TypeScript, and modern web technologies.",
     requirements: ["React", "TypeScript", "JavaScript", "CSS", "HTML", "Node.js"],
-    job_url: "https://careers.google.com/jobs/123",
+    job_url: "#",
     source: "Google Careers",
     match_score: 95,
     saved: false,
@@ -50,7 +50,7 @@ const mockJobs: JobRecommendation[] = [
     salary_range: "$140,000 - $180,000",
     description: "Build scalable web applications and APIs that serve billions of users worldwide.",
     requirements: ["React", "Python", "GraphQL", "PostgreSQL", "AWS"],
-    job_url: "https://careers.meta.com/jobs/456",
+    job_url: "#",
     source: "Meta Careers",
     match_score: 88,
     saved: true,
@@ -64,7 +64,7 @@ const mockJobs: JobRecommendation[] = [
     salary_range: "$130,000 - $170,000",
     description: "Help us deliver entertainment to millions of users with cutting-edge streaming technology.",
     requirements: ["Java", "Spring Boot", "Microservices", "Kafka", "Docker"],
-    job_url: "https://jobs.netflix.com/jobs/789",
+    job_url: "#",
     source: "Netflix Jobs",
     match_score: 82,
     saved: false,
@@ -78,12 +78,26 @@ const mockJobs: JobRecommendation[] = [
     salary_range: "$120,000 - $160,000",
     description: "Create beautiful and intuitive user experiences for our global platform.",
     requirements: ["React", "Redux", "JavaScript", "CSS", "Testing"],
-    job_url: "https://careers.airbnb.com/jobs/101",
+    job_url: "#",
     source: "Airbnb Careers",
     match_score: 90,
     saved: false,
     created_at: new Date().toISOString(),
   },
+  {
+    id: "5",
+    title: "AI Engineer",
+    company: "OpenAI",
+    location: "San Francisco, CA",
+    salary_range: "$200,000 - $300,000",
+    description: "Work on the frontier of artificial intelligence and build systems that can reason and learn.",
+    requirements: ["Python", "PyTorch", "TensorFlow", "NLP", "Deep Learning"],
+    job_url: "#",
+    source: "OpenAI",
+    match_score: 98,
+    saved: true,
+    created_at: new Date().toISOString(),
+  }
 ]
 
 export default function JobRecommendationsPage() {
@@ -169,55 +183,65 @@ export default function JobRecommendationsPage() {
   }
 
   const getMatchScoreColor = (score: number) => {
-    if (score >= 90) return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-    if (score >= 80) return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-    if (score >= 70) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-    return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+    if (score >= 90) return "bg-green-500/10 text-green-500 border-green-500/20"
+    if (score >= 80) return "bg-blue-500/10 text-blue-500 border-blue-500/20"
+    if (score >= 70) return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+    return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-[calc(100vh-100px)] text-muted-foreground animate-pulse">Loading recommendations...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 p-8 max-w-7xl mx-auto min-h-[calc(100vh-theme(spacing.4))]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Job Recommendations</h1>
-          <p className="text-muted-foreground">AI-powered job matches based on your profile and preferences</p>
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent flex items-center gap-2">
+            Job Recommendations <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+          </h1>
+          <p className="text-muted-foreground mt-1 text-lg">AI-powered matches tailored to your profile</p>
         </div>
-        <Button onClick={refreshRecommendations} disabled={loading}>
+        <Button
+          onClick={refreshRecommendations}
+          disabled={loading}
+          className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-105"
+        >
           <Star className="mr-2 h-4 w-4" />
-          {loading ? "Refreshing..." : "Refresh"}
+          {loading ? "Refreshing..." : "Refresh Matches"}
         </Button>
       </div>
 
       {/* Filters */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
+      <Card className="glass-card border-white/10 overflow-hidden">
+        <CardHeader className="bg-white/5 border-b border-white/5 pb-4">
+          <CardTitle className="flex items-center gap-2 text-base font-medium">
+            <Filter className="h-4 w-4 text-primary" />
+            Filter Jobs
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
+        <CardContent className="p-6">
+          <div className="grid gap-6 md:grid-cols-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
+              <label className="text-sm font-medium text-muted-foreground">Search</label>
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search jobs..."
+                  placeholder="Role, company, or skills..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
+                  className="pl-9 bg-white/5 border-white/10 focus:border-primary/50 transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Location</label>
+              <label className="text-sm font-medium text-muted-foreground">Location</label>
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/5 border-white/10 focus:ring-primary/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-[#09090b] border-white/10 text-white">
                   <SelectItem value="all">All Locations</SelectItem>
                   <SelectItem value="CA">California</SelectItem>
                   <SelectItem value="NY">New York</SelectItem>
@@ -228,13 +252,13 @@ export default function JobRecommendationsPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Salary</label>
+              <label className="text-sm font-medium text-muted-foreground">Salary Range</label>
               <Select value={salaryFilter} onValueChange={setSalaryFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/5 border-white/10 focus:ring-primary/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Salaries</SelectItem>
+                <SelectContent className="bg-[#09090b] border-white/10 text-white">
+                  <SelectItem value="all">Any Salary</SelectItem>
                   <SelectItem value="100k+">$100k+</SelectItem>
                   <SelectItem value="150k+">$150k+</SelectItem>
                   <SelectItem value="200k+">$200k+</SelectItem>
@@ -243,14 +267,14 @@ export default function JobRecommendationsPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Show</label>
+              <label className="text-sm font-medium text-muted-foreground">View</label>
               <Select value={savedOnly ? "saved" : "all"} onValueChange={(value) => setSavedOnly(value === "saved")}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/5 border-white/10 focus:ring-primary/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Jobs</SelectItem>
-                  <SelectItem value="saved">Saved Only</SelectItem>
+                <SelectContent className="bg-[#09090b] border-white/10 text-white">
+                  <SelectItem value="all">All Recommendations</SelectItem>
+                  <SelectItem value="saved">Saved Jobs Only</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -259,20 +283,31 @@ export default function JobRecommendationsPage() {
       </Card>
 
       {/* Job Results */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
-            {filteredJobs.length} Job{filteredJobs.length !== 1 ? "s" : ""} Found
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <span className="bg-primary/20 text-primary px-2 py-1 rounded-md text-sm">{filteredJobs.length}</span> matches found
           </h2>
-          <Badge variant="outline">{jobs.filter((job) => job.saved).length} Saved</Badge>
+          {jobs.filter((job) => job.saved).length > 0 && (
+            <Badge variant="secondary" className="bg-white/10 hover:bg-white/20 transition-colors">
+              {jobs.filter((job) => job.saved).length} saved jobs
+            </Badge>
+          )}
         </div>
 
         {filteredJobs.length === 0 ? (
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No jobs match your current filters</p>
+          <Card className="glass-card border-white/10 bg-white/5">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="h-16 w-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-muted-foreground/50" />
+              </div>
+              <p className="text-xl font-medium text-foreground mb-2">No jobs found</p>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                Try adjusting your filters or search terms to see more opportunities.
+              </p>
               <Button
                 variant="outline"
+                className="border-white/10 hover:bg-white/5 hover:text-white"
                 onClick={() => {
                   setSearchTerm("")
                   setLocationFilter("all")
@@ -280,73 +315,93 @@ export default function JobRecommendationsPage() {
                   setSavedOnly(false)
                 }}
               >
-                Clear Filters
+                Clear All Filters
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-6">
             {filteredJobs.map((job) => (
-              <Card key={job.id} className="dark:bg-gray-800 dark:border-gray-700 hover:shadow-md transition-shadow">
+              <Card key={job.id} className="glass-card border-white/10 hover:bg-white/5 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-primary/5 group relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-xl font-semibold">{job.title}</h3>
-                        <Badge className={getMatchScoreColor(job.match_score)}>{job.match_score}% Match</Badge>
+                  <div className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-1 space-y-4">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-2xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">{job.title}</h3>
+                            <Badge variant="outline" className={`${getMatchScoreColor(job.match_score)} font-mono font-bold`}>
+                              {job.match_score}% Match
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-lg text-muted-foreground">
+                            <Building2 className="h-5 w-5 text-primary/70" />
+                            <span className="font-medium text-foreground/80">{job.company}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleSaveJob(job.id)}
+                            className={`h-10 w-10 rounded-full transition-all ${job.saved
+                                ? "bg-primary/20 text-primary hover:bg-primary/30"
+                                : "hover:bg-white/10 text-muted-foreground hover:text-white"
+                              }`}
+                          >
+                            <Bookmark className={`h-5 w-5 ${job.saved ? "fill-current" : ""}`} />
+                          </Button>
+                          <Button size="lg" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 shadow-lg" asChild>
+                            <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                              Apply Now
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-lg text-muted-foreground mb-2">{job.company}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
+
+                      <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-muted-foreground border-y border-white/5 py-4 my-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-full bg-blue-500/10 text-blue-400">
+                            <MapPin className="h-4 w-4" />
+                          </div>
                           <span>{job.location}</span>
                         </div>
                         {job.salary_range && (
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4" />
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-full bg-green-500/10 text-green-400">
+                              <DollarSign className="h-4 w-4" />
+                            </div>
                             <span>{job.salary_range}</span>
                           </div>
                         )}
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-full bg-purple-500/10 text-purple-400">
+                            <Clock className="h-4 w-4" />
+                          </div>
+                          <span>Posted {new Date(job.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-full bg-orange-500/10 text-orange-400">
+                            <Briefcase className="h-4 w-4" />
+                          </div>
+                          <span>{job.source}</span>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => toggleSaveJob(job.id)}
-                        className={job.saved ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20" : ""}
-                      >
-                        <Bookmark className={`h-4 w-4 ${job.saved ? "fill-current" : ""}`} />
-                      </Button>
-                      <Button size="sm" asChild>
-                        <a href={job.job_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          Apply
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
 
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{job.description}</p>
+                      <p className="text-muted-foreground/80 leading-relaxed text-sm md:text-base">{job.description}</p>
 
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium mb-2">Required Skills:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {job.requirements.map((req, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {req}
-                          </Badge>
-                        ))}
+                      <div className="space-y-3 pt-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Required Skills</p>
+                        <div className="flex flex-wrap gap-2">
+                          {job.requirements.map((req, index) => (
+                            <Badge key={index} variant="secondary" className="bg-primary/5 hover:bg-primary/10 text-primary/80 border border-primary/10 transition-colors">
+                              {req}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Source: {job.source}</span>
-                      <span>Posted: {new Date(job.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </CardContent>

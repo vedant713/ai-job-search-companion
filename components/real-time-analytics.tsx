@@ -131,17 +131,19 @@ export function RealTimeAnalytics() {
       return acc
     }, {})
 
+    // Modern colors using CSS variables would be better, but Recharts needs hex
+    // We can use the hex equivalents of our theme (or close matches)
     const colors = {
-      Applied: "#3b82f6",
-      Interviewing: "#f59e0b",
-      Offer: "#10b981",
-      Rejected: "#ef4444",
+      Applied: "#6366f1", // Indigo
+      Interviewing: "#eab308", // Yellow
+      Offer: "#10b981", // Emerald
+      Rejected: "#ef4444", // Red
     }
 
     return Object.entries(statusCounts).map(([status, count]) => ({
       name: status,
       value: count as number,
-      color: colors[status as keyof typeof colors] || "#6b7280",
+      color: colors[status as keyof typeof colors] || "#8b5cf6",
     }))
   }
 
@@ -185,12 +187,12 @@ export function RealTimeAnalytics() {
     return (
       <div className="grid gap-6 md:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="dark:bg-gray-800 dark:border-gray-700">
+          <Card key={i} className="glass-card h-[400px]">
             <CardHeader>
-              <div className="h-4 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-1/3 bg-muted/20 rounded animate-pulse" />
             </CardHeader>
             <CardContent>
-              <div className="h-64 bg-muted rounded animate-pulse" />
+              <div className="h-full bg-muted/10 rounded animate-pulse" />
             </CardContent>
           </Card>
         ))}
@@ -201,31 +203,44 @@ export function RealTimeAnalytics() {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Application Trend */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle>Application Trend</CardTitle>
-          <CardDescription>Applications sent and responses received over time</CardDescription>
+          <CardDescription>Activity over the last 30 days</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data.applicationTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" stroke="var(--foreground)" />
-              <YAxis stroke="var(--foreground)" />
-              <Tooltip contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }} />
+            <AreaChart data={data.applicationTrend}>
+              <defs>
+                <linearGradient id="colorApps" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorRes" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#09090b", borderColor: "rgba(255,255,255,0.1)", borderRadius: "8px" }}
+                itemStyle={{ color: "#fff" }}
+              />
               <Legend />
-              <Line type="monotone" dataKey="applications" stroke="#3b82f6" name="Applications" strokeWidth={2} />
-              <Line type="monotone" dataKey="responses" stroke="#10b981" name="Responses" strokeWidth={2} />
-            </LineChart>
+              <Area type="monotone" dataKey="applications" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorApps)" name="Applied" strokeWidth={2} />
+              <Area type="monotone" dataKey="responses" stroke="#10b981" fillOpacity={1} fill="url(#colorRes)" name="Responses" strokeWidth={2} />
+            </AreaChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
       {/* Status Distribution */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle>Application Status</CardTitle>
-          <CardDescription>Distribution of application statuses</CardDescription>
+          <CardDescription>Current pipeline distribution</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -234,60 +249,70 @@ export function RealTimeAnalytics() {
                 data={data.statusDistribution}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                innerRadius={60}
                 outerRadius={80}
-                fill="#8884d8"
+                paddingAngle={5}
                 dataKey="value"
+                stroke="none"
               >
                 {data.statusDistribution.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#09090b", borderColor: "rgba(255,255,255,0.1)", borderRadius: "8px" }}
+                itemStyle={{ color: "#fff" }}
+              />
+              <Legend verticalAlign="bottom" height={36} />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
       {/* Skill Progress */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle>Skill Progress</CardTitle>
-          <CardDescription>Current vs target skill levels</CardDescription>
+          <CardDescription>Top 8 skills vs target</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.skillProgress} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis type="number" domain={[0, 100]} stroke="var(--foreground)" />
-              <YAxis dataKey="skill" type="category" width={80} stroke="var(--foreground)" />
-              <Tooltip contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }} />
+            <BarChart data={data.skillProgress} layout="vertical" barSize={10} barGap={0}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+              <XAxis type="number" domain={[0, 100]} stroke="rgba(255,255,255,0.5)" fontSize={12} />
+              <YAxis dataKey="skill" type="category" width={100} stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#09090b", borderColor: "rgba(255,255,255,0.1)", borderRadius: "8px" }}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              />
               <Legend />
-              <Bar dataKey="current" fill="#3b82f6" name="Current" />
-              <Bar dataKey="target" fill="#10b981" name="Target" />
+              <Bar dataKey="current" fill="#8b5cf6" name="Current" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="target" fill="#2d2d30" name="Target" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
       {/* Task Completion */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className="glass-card">
         <CardHeader>
-          <CardTitle>Task Completion</CardTitle>
-          <CardDescription>Tasks created vs completed over time</CardDescription>
+          <CardTitle>Productivity</CardTitle>
+          <CardDescription>Tasks completed weekly</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data.taskCompletion}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="week" stroke="var(--foreground)" />
-              <YAxis stroke="var(--foreground)" />
-              <Tooltip contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }} />
+            <BarChart data={data.taskCompletion}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis dataKey="week" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#09090b", borderColor: "rgba(255,255,255,0.1)", borderRadius: "8px" }}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              />
               <Legend />
-              <Area type="monotone" dataKey="created" stackId="1" stroke="#f59e0b" fill="#f59e0b" name="Created" />
-              <Area type="monotone" dataKey="completed" stackId="1" stroke="#10b981" fill="#10b981" name="Completed" />
-            </AreaChart>
+              <Bar dataKey="created" fill="#2d2d30" name="Created" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="completed" fill="#10b981" name="Completed" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>

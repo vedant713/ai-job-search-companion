@@ -1,6 +1,6 @@
 # AI Job Assistant
 
-A comprehensive AI-powered job application tracking and career management platform built with Next.js, TypeScript, and Google Gemini AI.
+A comprehensive AI-powered job application tracking and career management platform built with Next.js, TypeScript, Supabase, and Google Gemini AI.
 
 ## Features
 
@@ -37,12 +37,12 @@ A comprehensive AI-powered job application tracking and career management platfo
 
 ### Backend
 - **Next.js API Routes** for serverless functions
-- **MySQL** database with optimized schema
-- **JWT** authentication
-- **bcryptjs** for password hashing
+- **Supabase** for database and authentication
+- **PostgreSQL** (via Supabase)
 
 ### AI Integration
 - **Google Gemini API** for natural language processing
+- **gemini-2.5-flash** model for fast and accurate responses
 - Context-aware responses
 - Personalized career advice
 
@@ -50,59 +50,47 @@ A comprehensive AI-powered job application tracking and career management platfo
 
 ### Prerequisites
 - Node.js 18+ and npm/pnpm
-- MySQL database
+- Supabase project
 - Google Gemini API key
 
 ### Installation
 
 1. **Clone the repository**
-\`\`\`bash
+```bash
 git clone <repository-url>
 cd ai-job-assistant
-\`\`\`
+```
 
 2. **Install dependencies**
-\`\`\`bash
+```bash
 npm install
 # or
 pnpm install
-\`\`\`
+```
 
 3. **Set up environment variables**
 Create a `.env.local` file in the root directory:
-\`\`\`env
-# Database
-DATABASE_URL="mysql://username:password@localhost:3306/job_assistant"
-
-# Authentication
-JWT_SECRET="your-super-secret-jwt-key"
-
+```env
 # AI Integration
 GEMINI_API_KEY="your-google-gemini-api-key"
 
-# App Configuration
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-nextauth-secret"
-\`\`\`
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL="your-supabase-project-url"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+```
 
-4. **Set up the database**
-\`\`\`bash
-# Create the database and run the schema
-mysql -u username -p < lib/database-schema.sql
-\`\`\`
-
-5. **Run the development server**
-\`\`\`bash
+4. **Run the development server**
+```bash
 npm run dev
 # or
 pnpm dev
-\`\`\`
+```
 
 Open [http://localhost:3000](http://localhost:3000) to see the application.
 
 ## Project Structure
 
-\`\`\`
+```
 ai-job-assistant/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
@@ -126,9 +114,9 @@ ai-job-assistant/
 │   ├── types.ts               # TypeScript interfaces
 │   ├── auth.ts                # Authentication utilities
 │   ├── gemini.ts              # AI integration
-│   └── database-schema.sql    # MySQL schema
+│   └── supabase.ts            # Supabase client
 └── README.md
-\`\`\`
+```
 
 ## Key Features Explained
 
@@ -191,20 +179,17 @@ ai-job-assistant/
 
 ## Database Schema
 
-The application uses a MySQL database with the following main tables:
-- `users` - User authentication and profile data
+The application uses a Supabase (PostgreSQL) database. The schema is managed via Supabase but generally includes:
 - `applications` - Job application tracking
 - `skills` - User skills and proficiency levels
 - `tasks` - To-do items with context and priorities
-- `ai_queries` - AI conversation history
+- `notifications` - System notifications
 
 ## Security Features
 
-- JWT-based authentication
-- Password hashing with bcrypt
-- SQL injection prevention
-- XSS protection
-- CSRF protection
+- Supabase Auth for user management
+- Row Level Security (RLS) policies
+- Environment variable protection
 - Rate limiting on API endpoints
 
 ## Performance Optimizations

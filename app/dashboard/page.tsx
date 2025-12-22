@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, Sparkles, ArrowUpRight, ArrowRight } from "lucide-react"
 import { Briefcase, Clock, TrendingUp, MessageSquare, CheckSquare, Target } from "lucide-react"
 import { RealTimeAnalytics } from "@/components/real-time-analytics"
 import { useAuth } from "@/components/auth-provider"
@@ -146,201 +146,212 @@ export default function DashboardPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "High":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+        return "bg-red-500/10 text-red-500 border-red-500/20"
       case "Medium":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
       case "Low":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        return "bg-green-500/10 text-green-500 border-green-500/20"
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
     }
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading dashboard...</div>
+    return <div className="flex items-center justify-center h-[calc(100vh-100px)] text-muted-foreground animate-pulse">Loading dashboard...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Button onClick={() => router.push("/dashboard/applications")}>
+    <div className="space-y-8 p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Welcome back, <span className="text-foreground font-medium">{user?.user_metadata?.full_name || "User"}</span>. Here's your job search overview.
+          </p>
+        </div>
+        <Button onClick={() => router.push("/dashboard/applications")} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-105">
           <Plus className="mr-2 h-4 w-4" />
           Add Application
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.applications.total || 0}</div>
-            <p className="text-xs text-muted-foreground">+{stats?.applications.thisWeek || 0} from last week</p>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Interviews</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.applications.interviewing || 0}</div>
-            <p className="text-xs text-muted-foreground">In progress</p>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.applications.responseRate || 0}%</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.applications.interviewing || 0} + {stats?.applications.offers || 0} responses
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Offers Received</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.applications.offers || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.applications.offers === 0 ? "Keep applying!" : "Congratulations!"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.tasks.pending || 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.tasks.completed || 0} completed</p>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Skills Tracked</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.skills.total || 0}</div>
-            <p className="text-xs text-muted-foreground">Avg level: {stats?.skills.averageLevel || 0}%</p>
-          </CardContent>
-        </Card>
-
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.applications.thisWeek || 0}</div>
-            <p className="text-xs text-muted-foreground">Applications sent</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Replace the existing grid with charts */}
-      <RealTimeAnalytics />
-
-      {/* Quick AI Assistant */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle>Quick AI Assistant</CardTitle>
-          <CardDescription>Ask me anything about your job search</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Ask AI: 'Suggest job titles for frontend roles'"
-              className="flex-1"
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleAiQuery()}
-            />
-            <Button onClick={handleAiQuery}>
-              <Search className="h-4 w-4" />
-            </Button>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="flex items-center justify-between">
+            <div className="p-2 bg-primary/10 rounded-xl text-primary">
+              <Briefcase className="h-5 w-5" />
+            </div>
+            <span className={`text-xs font-medium px-2 py-1 rounded-full bg-green-500/10 text-green-500`}>
+              +{stats?.applications.thisWeek || 0} this week
+            </span>
           </div>
-          <div className="mt-4 space-y-2">
-            <p className="text-sm text-muted-foreground">Quick suggestions:</p>
-            <div className="flex flex-wrap gap-2">
-              {["Write cover letter", "Interview prep", "Salary negotiation", "Follow-up email"].map((suggestion) => (
-                <Badge
-                  key={suggestion}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setAiQuery(suggestion)
-                    handleAiQuery()
-                  }}
-                >
-                  {suggestion}
-                </Badge>
-              ))}
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold">{stats?.applications.total || 0}</h3>
+            <p className="text-sm text-muted-foreground mt-1">Total Applications</p>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="flex items-center justify-between">
+            <div className="p-2 bg-yellow-500/10 rounded-xl text-yellow-500">
+              <Clock className="h-5 w-5" />
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold">{stats?.applications.interviewing || 0}</h3>
+            <p className="text-sm text-muted-foreground mt-1">Active Interviews</p>
+          </div>
+        </div>
 
-      {/* Upcoming Tasks */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle>Upcoming Tasks</CardTitle>
-          <CardDescription>Your next action items</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recentTasks.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground mb-2">No upcoming tasks</p>
-              <Button variant="outline" onClick={() => router.push("/dashboard/todos")}>
-                Add Task
-              </Button>
+        <div className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="flex items-center justify-between">
+            <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+              <TrendingUp className="h-5 w-5" />
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-center justify-between p-3 border rounded-lg dark:border-gray-600"
+            <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-500/10 text-blue-500">
+              {stats?.applications.responseRate || 0}% Rate
+            </span>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold">{stats?.applications.responseRate || 0}%</h3>
+            <p className="text-sm text-muted-foreground mt-1">Response Rate</p>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="flex items-center justify-between">
+            <div className="p-2 bg-green-500/10 rounded-xl text-green-500">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-3xl font-bold">{stats?.applications.offers || 0}</h3>
+            <p className="text-sm text-muted-foreground mt-1">Offers Received</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Main Analytics Area */}
+        <div className="md:col-span-2 space-y-6">
+          <RealTimeAnalytics />
+        </div>
+
+        {/* Sidebar Widgets */}
+        <div className="space-y-6">
+          {/* Quick AI Assistant - Modern Chat Style */}
+          <Card className="glass-card bg-gradient-to-b from-card to-card/50 overflow-hidden border-primary/20">
+            <CardHeader className="pb-3 border-b border-white/5 bg-primary/5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">AI Companion</CardTitle>
+              </div>
+              <CardDescription>Ask for career advice or tips</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="relative">
+                <Input
+                  placeholder="Ask me anything..."
+                  className="pr-10 bg-background/50 border-white/10 focus:border-primary/50 text-sm h-11"
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleAiQuery()}
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-1 top-1 h-9 w-9 text-primary hover:bg-primary/10 rounded-lg"
+                  onClick={handleAiQuery}
                 >
-                  <div>
-                    <p className="font-medium">{task.description}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {task.due_date ? `Due: ${new Date(task.due_date).toLocaleDateString()}` : "No due date"}
-                    </p>
-                  </div>
-                  <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Prompts</p>
+                <div className="flex flex-col gap-2">
+                  {["Analyze my resume", "Draft cover letter", "Interview tips", "Salary negotiation"].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      className="text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all flex items-center justify-between group"
+                      onClick={() => {
+                        setAiQuery(suggestion)
+                        // Optional: auto-submit or just fill
+                      }}
+                    >
+                      {suggestion}
+                      <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+                    </button>
+                  ))}
                 </div>
-              ))}
-              <Button
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={() => router.push("/dashboard/todos")}
-              >
-                View All Tasks
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Tasks - Modern List */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Tasks</CardTitle>
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => router.push("/dashboard/todos")}>View All</Button>
+            </CardHeader>
+            <CardContent>
+              {recentTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckSquare className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-3">No pending tasks</p>
+                  <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/todos")}>
+                    Add Task
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="group flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-transparent hover:border-white/10 transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <span className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">{task.description}</span>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${getPriorityColor(task.priority)}`}>{task.priority}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {task.due_date ? new Date(task.due_date).toLocaleDateString() : "No date"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Mini Skill Stats */}
+          <Card className="glass-card bg-gradient-to-br from-card to-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Skill Growth</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold">{stats?.skills.averageLevel || 0}%</span>
+                <span className="text-sm text-muted-foreground">avg. proficiency</span>
+              </div>
+              <div className="mt-3 h-2 w-full bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-purple-500"
+                  style={{ width: `${stats?.skills.averageLevel || 0}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

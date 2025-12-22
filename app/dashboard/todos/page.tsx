@@ -18,17 +18,18 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Calendar, Clock, CheckCircle2, Circle, Trash2 } from "lucide-react"
+import { Plus, Calendar, Clock, CheckCircle2, Circle, Trash2, ListTodo, Filter, LayoutList, Kanban, ArrowRight } from "lucide-react"
 import { DragDropTasks } from "@/components/drag-drop-tasks"
 import { useAuth } from "@/components/auth-provider"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import type { Task } from "@/lib/supabase"
+import { Progress } from "@/components/ui/progress"
 
 const priorityColors = {
-  Low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  Medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  High: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  Low: "bg-green-500/10 text-green-500 border-green-500/20",
+  Medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  High: "bg-red-500/10 text-red-500 border-red-500/20",
 }
 
 export default function TodosPage() {
@@ -177,67 +178,87 @@ export default function TodosPage() {
 
   const completedCount = tasks.filter((task) => task.is_complete).length
   const pendingCount = tasks.length - completedCount
+  const completionPercentage = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return <div className="flex items-center justify-center h-[calc(100vh-100px)] text-muted-foreground animate-pulse">Loading tasks...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Tasks & To-Dos</h1>
-        <div className="flex gap-2">
-          <Select value={viewMode} onValueChange={(value: "list" | "kanban") => setViewMode(value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="list">List View</SelectItem>
-              <SelectItem value="kanban">Kanban</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-8 p-8 max-w-7xl mx-auto min-h-[calc(100vh-theme(spacing.4))]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent flex items-center gap-2">
+            Tasks & To-Dos <ListTodo className="h-6 w-6 text-primary animate-pulse" />
+          </h1>
+          <p className="text-muted-foreground mt-1 text-lg">Stay organized and track your daily progress</p>
+        </div>
+
+        <div className="flex gap-3 items-center">
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className={`h-8 px-3 ${viewMode === "list" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white"}`}
+            >
+              <LayoutList className="h-4 w-4 mr-2" />
+              List
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("kanban")}
+              className={`h-8 px-3 ${viewMode === "kanban" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white"}`}
+            >
+              <Kanban className="h-4 w-4 mr-2" />
+              Board
+            </Button>
+          </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-105">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Task
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] dark:bg-gray-800 dark:border-gray-700">
+            <DialogContent className="sm:max-w-[425px] glass-card border-white/10">
               <DialogHeader>
                 <DialogTitle>Add New Task</DialogTitle>
                 <DialogDescription>Create a new task to track your progress.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="description">Task Description</Label>
+                  <Label htmlFor="description" className="text-muted-foreground">Task Description</Label>
                   <Textarea
                     id="description"
                     value={newTask.description}
                     onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                     placeholder="What needs to be done?"
+                    className="bg-white/5 border-white/10 min-h-[100px]"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="due-date">Due Date</Label>
+                    <Label htmlFor="due-date" className="text-muted-foreground">Due Date</Label>
                     <Input
                       id="due-date"
                       type="date"
                       value={newTask.due_date}
                       onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                      className="bg-white/5 border-white/10"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="priority">Priority</Label>
+                    <Label htmlFor="priority" className="text-muted-foreground">Priority</Label>
                     <Select
                       value={newTask.priority}
                       onValueChange={(value) => setNewTask({ ...newTask, priority: value as any })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white/5 border-white/10">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-[#09090b] border-white/10 text-white">
                         <SelectItem value="Low">Low</SelectItem>
                         <SelectItem value="Medium">Medium</SelectItem>
                         <SelectItem value="High">High</SelectItem>
@@ -246,16 +267,18 @@ export default function TodosPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="context">Context/Notes</Label>
+                  <Label htmlFor="context" className="text-muted-foreground">Context/Notes</Label>
                   <Input
                     id="context"
                     value={newTask.context || ""}
                     onChange={(e) => setNewTask({ ...newTask, context: e.target.value })}
                     placeholder="Additional context or notes"
+                    className="bg-white/5 border-white/10"
                   />
                 </div>
               </div>
               <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleAddTask}>Add Task</Button>
               </DialogFooter>
             </DialogContent>
@@ -265,49 +288,60 @@ export default function TodosPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <Card className="glass-card border-white/10 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12 bg-white/10 rounded-full p-8">
+            <LayoutList className="h-12 w-12" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Tasks</CardTitle>
+            <Circle className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tasks.length}</div>
-            <p className="text-xs text-muted-foreground">All tasks created</p>
+            <div className="text-3xl font-bold">{tasks.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Acitve items in your list</p>
           </CardContent>
         </Card>
 
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <Card className="glass-card border-white/10 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12 bg-white/10 rounded-full p-8">
+            <CheckCircle2 className="h-12 w-12 text-green-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <Circle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Completion Status</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedCount}</div>
-            <p className="text-xs text-muted-foreground">
-              {tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0}% completion rate
-            </p>
+            <div className="flex items-end justify-between mb-2">
+              <div className="text-3xl font-bold">{completionPercentage}%</div>
+              <span className="text-xs text-muted-foreground mb-1">{completedCount} / {tasks.length} completed</span>
+            </div>
+            <Progress value={completionPercentage} className="h-2 bg-white/10" indicatorClassName="bg-green-500" />
           </CardContent>
         </Card>
 
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <Card className="glass-card border-white/10 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12 bg-white/10 rounded-full p-8">
+            <Clock className="h-12 w-12 text-orange-500" />
+          </div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Tasks</CardTitle>
+            <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingCount}</div>
-            <p className="text-xs text-muted-foreground">Tasks remaining</p>
+            <div className="text-3xl font-bold">{pendingCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">Requires your attention</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 items-center">
+      <div className="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/10 w-fit">
+        <Filter className="h-4 w-4 text-muted-foreground ml-2" />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] bg-transparent border-none focus:ring-0">
             <SelectValue placeholder="Filter tasks" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-[#09090b] border-white/10 text-white">
             <SelectItem value="all">All Tasks</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
@@ -319,60 +353,63 @@ export default function TodosPage() {
 
       {/* Task Display */}
       {viewMode === "kanban" ? (
-        <DragDropTasks tasks={filteredTasks} onTaskUpdate={fetchTasks} />
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <DragDropTasks tasks={filteredTasks} onTaskUpdate={fetchTasks} />
+        </div>
       ) : (
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle>Tasks ({filteredTasks.length})</CardTitle>
-            <CardDescription>Manage your tasks and track progress</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card className="glass-card border-white/10">
+          <CardContent className="p-0">
             {filteredTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No tasks found</p>
-                <Button onClick={() => setIsAddDialogOpen(true)}>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="h-16 w-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                  <ListTodo className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+                <p className="text-muted-foreground mb-4">No tasks found matching your filter</p>
+                <Button onClick={() => setIsAddDialogOpen(true)} variant="outline" className="border-white/10 hover:bg-white/5">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Your First Task
+                  Add New Task
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="divide-y divide-white/5">
                 {filteredTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-start gap-4 p-4 border rounded-lg dark:border-gray-600 hover:bg-muted/50 transition-colors"
+                    className="flex items-start gap-4 p-4 hover:bg-white/5 transition-colors group animate-in fade-in"
                   >
                     <Checkbox
                       checked={task.is_complete}
                       onCheckedChange={(checked) => handleToggleComplete(task.id, checked as boolean)}
-                      className="mt-1"
+                      className="mt-1.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary border-white/20"
                     />
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-1">
                       <div className="flex items-start justify-between">
-                        <p className={`font-medium ${task.is_complete ? "line-through text-muted-foreground" : ""}`}>
-                          {task.description}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Badge className={priorityColors[task.priority as keyof typeof priorityColors]}>
-                            {task.priority}
-                          </Badge>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteTask(task.id)}>
+                        <div className="flex flex-col gap-1">
+                          <p className={`font-medium text-base transition-all ${task.is_complete ? "line-through text-muted-foreground" : "text-foreground"
+                            }`}>
+                            {task.description}
+                          </p>
+                          {task.context && <p className="text-sm text-muted-foreground">{task.context}</p>}
+                        </div>
+
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      {task.context && <p className="text-sm text-muted-foreground">{task.context}</p>}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+                        <Badge variant="outline" className={`font-medium ${priorityColors[task.priority as keyof typeof priorityColors]}`}>
+                          {task.priority}
+                        </Badge>
                         {task.due_date && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                          <div className={`flex items-center gap-1.5 ${new Date(task.due_date) < new Date() && !task.is_complete ? "text-red-400" : ""
+                            }`}>
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>Due {new Date(task.due_date).toLocaleDateString()}</span>
                           </div>
                         )}
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
-                        </div>
                       </div>
                     </div>
                   </div>

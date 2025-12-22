@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Search, Briefcase, Filter, X } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkOperations } from "@/components/bulk-operations"
 import { useAuth } from "@/components/auth-provider"
@@ -26,11 +26,11 @@ import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import type { Application } from "@/lib/supabase"
 
-const statusColors = {
-  Applied: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  Interviewing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  Offer: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  Rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+const statusConfig = {
+  Applied: { color: "bg-primary/20 text-primary border-primary/20", label: "Applied" },
+  Interviewing: { color: "bg-yellow-500/20 text-yellow-500 border-yellow-500/20", label: "Interviewing" },
+  Offer: { color: "bg-green-500/20 text-green-500 border-green-500/20", label: "Offer" },
+  Rejected: { color: "bg-red-500/20 text-red-500 border-red-500/20", label: "Rejected" },
 }
 
 export default function ApplicationsPage() {
@@ -241,60 +241,65 @@ export default function ApplicationsPage() {
   })
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>
+    return <div className="flex items-center justify-center h-[calc(100vh-100px)] text-muted-foreground animate-pulse">Loading applications...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Job Applications</h1>
+    <div className="space-y-8 p-8 max-w-7xl mx-auto h-[calc(100vh-theme(spacing.4))] flex flex-col">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+            Applications
+          </h1>
+          <p className="text-muted-foreground mt-1">Manage and track your job applications strategy</p>
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-105">
               <Plus className="mr-2 h-4 w-4" />
-              Add Application
+              New Application
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] dark:bg-gray-800 dark:border-gray-700">
+          <DialogContent className="sm:max-w-[500px] glass-card border-white/10">
             <DialogHeader>
               <DialogTitle>Add New Application</DialogTitle>
               <DialogDescription>Add a new job application to track your progress.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="company" className="text-right">
+                <Label htmlFor="company" className="text-right text-muted-foreground">
                   Company
                 </Label>
                 <Input
                   id="company"
-                  className="col-span-3"
+                  className="col-span-3 bg-white/5 border-white/10"
                   value={newApplication.company}
                   onChange={(e) => setNewApplication({ ...newApplication, company: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="role" className="text-right">
+                <Label htmlFor="role" className="text-right text-muted-foreground">
                   Role
                 </Label>
                 <Input
                   id="role"
-                  className="col-span-3"
+                  className="col-span-3 bg-white/5 border-white/10"
                   value={newApplication.role}
                   onChange={(e) => setNewApplication({ ...newApplication, role: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="status" className="text-right">
+                <Label htmlFor="status" className="text-right text-muted-foreground">
                   Status
                 </Label>
                 <Select
                   value={newApplication.status}
                   onValueChange={(value) => setNewApplication({ ...newApplication, status: value as any })}
                 >
-                  <SelectTrigger className="col-span-3">
+                  <SelectTrigger className="col-span-3 bg-white/5 border-white/10">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#09090b] border-white/10">
                     <SelectItem value="Applied">Applied</SelectItem>
                     <SelectItem value="Interviewing">Interviewing</SelectItem>
                     <SelectItem value="Offer">Offer</SelectItem>
@@ -303,18 +308,19 @@ export default function ApplicationsPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="notes" className="text-right">
+                <Label htmlFor="notes" className="text-right text-muted-foreground">
                   Notes
                 </Label>
                 <Textarea
                   id="notes"
-                  className="col-span-3"
+                  className="col-span-3 bg-white/5 border-white/10"
                   value={newApplication.notes || ""}
                   onChange={(e) => setNewApplication({ ...newApplication, notes: e.target.value })}
                 />
               </div>
             </div>
             <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
               <Button type="submit" onClick={handleAddApplication}>
                 Add Application
               </Button>
@@ -325,47 +331,41 @@ export default function ApplicationsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] dark:bg-gray-800 dark:border-gray-700">
+        <DialogContent className="sm:max-w-[500px] glass-card border-white/10">
           <DialogHeader>
             <DialogTitle>Edit Application</DialogTitle>
             <DialogDescription>Update your job application details.</DialogDescription>
           </DialogHeader>
           {editingApplication && (
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-company" className="text-right">
-                  Company
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-company" className="text-muted-foreground">Company</Label>
                 <Input
                   id="edit-company"
-                  className="col-span-3"
+                  className="bg-white/5 border-white/10"
                   value={editingApplication.company}
                   onChange={(e) => setEditingApplication({ ...editingApplication, company: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-role" className="text-right">
-                  Role
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-role" className="text-muted-foreground">Role</Label>
                 <Input
                   id="edit-role"
-                  className="col-span-3"
+                  className="bg-white/5 border-white/10"
                   value={editingApplication.role}
                   onChange={(e) => setEditingApplication({ ...editingApplication, role: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-status" className="text-right">
-                  Status
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status" className="text-muted-foreground">Status</Label>
                 <Select
                   value={editingApplication.status}
                   onValueChange={(value) => setEditingApplication({ ...editingApplication, status: value as any })}
                 >
-                  <SelectTrigger className="col-span-3">
+                  <SelectTrigger className="bg-white/5 border-white/10">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#09090b] border-white/10">
                     <SelectItem value="Applied">Applied</SelectItem>
                     <SelectItem value="Interviewing">Interviewing</SelectItem>
                     <SelectItem value="Offer">Offer</SelectItem>
@@ -373,13 +373,11 @@ export default function ApplicationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-notes" className="text-right">
-                  Notes
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-notes" className="text-muted-foreground">Notes</Label>
                 <Textarea
                   id="edit-notes"
-                  className="col-span-3"
+                  className="bg-white/5 border-white/10"
                   value={editingApplication.notes || ""}
                   onChange={(e) => setEditingApplication({ ...editingApplication, notes: e.target.value })}
                 />
@@ -387,6 +385,7 @@ export default function ApplicationsPage() {
             </div>
           )}
           <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
             <Button type="submit" onClick={handleEditApplication}>
               Update Application
             </Button>
@@ -394,26 +393,37 @@ export default function ApplicationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Filters */}
-      <div className="flex gap-4 items-center">
-        <Input
-          placeholder="Search applications..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="Applied">Applied</SelectItem>
-            <SelectItem value="Interviewing">Interviewing</SelectItem>
-            <SelectItem value="Offer">Offer</SelectItem>
-            <SelectItem value="Rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center bg-card/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search company or role..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 bg-white/5 border-white/10 focus:border-primary/50 w-full"
+          />
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px] bg-white/5 border-white/10">
+              <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#09090b] border-white/10">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Applied">Applied</SelectItem>
+              <SelectItem value="Interviewing">Interviewing</SelectItem>
+              <SelectItem value="Offer">Offer</SelectItem>
+              <SelectItem value="Rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+          {statusFilter !== "all" && (
+            <Button variant="ghost" size="icon" onClick={() => setStatusFilter("all")} className="text-muted-foreground hover:text-white">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <BulkOperations
@@ -444,95 +454,116 @@ export default function ApplicationsPage() {
         itemType="applications"
       />
 
-      {/* Applications Table */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle>Applications ({filteredApplications.length})</CardTitle>
-          <CardDescription>Manage your job applications and track their progress</CardDescription>
+      {/* Applications Table - Glassmorphism */}
+      <Card className="glass-card flex-1 overflow-hidden border-white/10 bg-gradient-to-br from-card/50 to-card/10">
+        <CardHeader className="border-b border-white/5 bg-white/5 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              <CardTitle>All Applications</CardTitle>
+              <Badge variant="secondary" className="bg-white/10 text-muted-foreground">{filteredApplications.length}</Badge>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredApplications.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No applications found</p>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="h-16 w-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                <Briefcase className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+              <p className="text-xl font-medium text-foreground mb-2">No applications found</p>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                Get started by adding your first job application to track your progress.
+              </p>
+              <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Your First Application
+                Add Application
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead>
-                    <Checkbox
-                      checked={selectedApplications.length === applications.length && applications.length > 0}
-                      indeterminate={
-                        selectedApplications.length > 0 && selectedApplications.length < applications.length
-                          ? true
-                          : undefined
-                      }
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedApplications(applications.map((app) => app.id))
-                        } else {
-                          setSelectedApplications([])
-                        }
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date Applied</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredApplications.map((application) => (
-                  <TableRow key={application.id} className="dark:border-gray-700">
-                    <TableCell>
+            <div className="overflow-auto">
+              <Table>
+                <TableHeader className="bg-white/5">
+                  <TableRow className="border-white/5 hover:bg-transparent">
+                    <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={selectedApplications.includes(application.id)}
+                        checked={selectedApplications.length === applications.length && applications.length > 0}
+                        indeterminate={
+                          selectedApplications.length > 0 && selectedApplications.length < applications.length
+                            ? true
+                            : undefined
+                        }
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedApplications([...selectedApplications, application.id])
+                            setSelectedApplications(applications.map((app) => app.id))
                           } else {
-                            setSelectedApplications(selectedApplications.filter((id) => id !== application.id))
+                            setSelectedApplications([])
                           }
                         }}
+                        className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
-                    </TableCell>
-                    <TableCell className="font-medium">{application.company}</TableCell>
-                    <TableCell>{application.role}</TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[application.status as keyof typeof statusColors]}>
-                        {application.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(application.date_applied).toLocaleDateString()}</TableCell>
-                    <TableCell className="max-w-xs truncate">{application.notes}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingApplication(application)
-                            setIsEditDialogOpen(true)
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDeleteApplication(application.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Company</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Role</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Status</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Applied On</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Notes</TableHead>
+                    <TableHead className="text-right text-muted-foreground font-medium">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredApplications.map((application) => (
+                    <TableRow key={application.id} className="border-white/5 hover:bg-white/5 transition-colors group">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedApplications.includes(application.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedApplications([...selectedApplications, application.id])
+                            } else {
+                              setSelectedApplications(selectedApplications.filter((id) => id !== application.id))
+                            }
+                          }}
+                          className="border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                      </TableCell>
+                      <TableCell className="font-semibold text-foreground">{application.company}</TableCell>
+                      <TableCell className="text-muted-foreground group-hover:text-foreground transition-colors">{application.role}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`${statusConfig[application.status as keyof typeof statusConfig]?.color} capitalize shadow-sm`}>
+                          {application.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{new Date(application.date_applied).toLocaleDateString()}</TableCell>
+                      <TableCell className="max-w-xs truncate text-muted-foreground text-sm italic">{application.notes || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-white/10 hover:text-primary"
+                            onClick={() => {
+                              setEditingApplication(application)
+                              setIsEditDialogOpen(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-red-500/10 hover:text-red-500"
+                            onClick={() => handleDeleteApplication(application.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
