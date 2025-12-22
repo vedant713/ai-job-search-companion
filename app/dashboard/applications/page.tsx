@@ -487,11 +487,10 @@ export default function ApplicationsPage() {
                   <TableRow className="border-white/5 hover:bg-transparent">
                     <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={selectedApplications.length === applications.length && applications.length > 0}
-                        indeterminate={
+                        checked={
                           selectedApplications.length > 0 && selectedApplications.length < applications.length
-                            ? true
-                            : undefined
+                            ? "indeterminate"
+                            : selectedApplications.length === applications.length && applications.length > 0
                         }
                         onCheckedChange={(checked) => {
                           if (checked) {

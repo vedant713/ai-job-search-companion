@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Bookmark, ExternalLink, MapPin, DollarSign, Clock, Star, Search, Filter, Sparkles, Building2, Briefcase } from "lucide-react"
+import { Bookmark, ExternalLink, MapPin, DollarSign, Clock, Star, Search, Filter, Sparkles, Building2, Briefcase, Linkedin } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { supabase } from "@/lib/supabase"
 
 interface JobRecommendation {
   id: string
@@ -19,7 +28,7 @@ interface JobRecommendation {
   description: string
   requirements: string[]
   job_url: string
-  source: string
+  source: "LinkedIn" | "Indeed" | "Glassdoor" | "Company Site" | string
   match_score: number
   saved: boolean
   created_at: string
@@ -51,7 +60,7 @@ const mockJobs: JobRecommendation[] = [
     description: "Build scalable web applications and APIs that serve billions of users worldwide.",
     requirements: ["React", "Python", "GraphQL", "PostgreSQL", "AWS"],
     job_url: "#",
-    source: "Meta Careers",
+    source: "LinkedIn",
     match_score: 88,
     saved: true,
     created_at: new Date().toISOString(),
@@ -79,7 +88,7 @@ const mockJobs: JobRecommendation[] = [
     description: "Create beautiful and intuitive user experiences for our global platform.",
     requirements: ["React", "Redux", "JavaScript", "CSS", "Testing"],
     job_url: "#",
-    source: "Airbnb Careers",
+    source: "LinkedIn",
     match_score: 90,
     saved: false,
     created_at: new Date().toISOString(),
@@ -97,6 +106,20 @@ const mockJobs: JobRecommendation[] = [
     match_score: 98,
     saved: true,
     created_at: new Date().toISOString(),
+  },
+  {
+    id: "6",
+    title: "Product Designer",
+    company: "Stripe",
+    location: "Remote",
+    salary_range: "$130,000 - $190,000",
+    description: "Design intuitive interfaces for financial tools used by millions of businesses.",
+    requirements: ["Figma", "UI/UX", "Prototyping", "Design Systems"],
+    job_url: "#",
+    source: "LinkedIn",
+    match_score: 85,
+    saved: false,
+    created_at: new Date().toISOString(),
   }
 ]
 
@@ -108,6 +131,10 @@ export default function JobRecommendationsPage() {
   const [salaryFilter, setSalaryFilter] = useState("all")
   const [savedOnly, setSavedOnly] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Smart Apply State
+  const [selectedJob, setSelectedJob] = useState<JobRecommendation | null>(null)
+  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false)
 
   const { user } = useAuth()
   const { toast } = useToast()
@@ -182,11 +209,59 @@ export default function JobRecommendationsPage() {
     }, 1000)
   }
 
+  const handleApplyClick = (job: JobRecommendation) => {
+    setSelectedJob(job)
+    setIsApplyDialogOpen(true)
+  }
+
+  const handleSmartApply = async (shouldTrack: boolean) => {
+    if (!selectedJob) return
+
+    if (shouldTrack && user) {
+      try {
+        const { error } = await supabase.from("applications").insert({
+          user_id: user.id,
+          company: selectedJob.company,
+          role: selectedJob.title,
+          status: "Applied",
+          job_url: selectedJob.job_url,
+          location: selectedJob.location,
+          notes: `Applied via Job Recommendations. Source: ${selectedJob.source}`,
+          applied_date: new Date().toISOString()
+        })
+
+        if (error) throw error
+
+        toast({
+          title: "Application Tracked",
+          description: `Successfully added ${selectedJob.title} at ${selectedJob.company} to your tracking board.`,
+        })
+      } catch (error) {
+        console.error("Error tracking application:", error)
+        toast({
+          title: "Tracking Failed",
+          description: "Could not automatically track this application. Please try adding it manually.",
+          variant: "destructive"
+        })
+      }
+    }
+
+    // Open job URL in new tab
+    window.open(selectedJob.job_url, "_blank")
+    setIsApplyDialogOpen(false)
+    setSelectedJob(null)
+  }
+
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return "bg-green-500/10 text-green-500 border-green-500/20"
     if (score >= 80) return "bg-blue-500/10 text-blue-500 border-blue-500/20"
     if (score >= 70) return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
     return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+  }
+
+  const getSourceIcon = (source: string) => {
+    if (source === "LinkedIn") return <Linkedin className="h-4 w-4 text-[#0077b5]" />
+    return <Briefcase className="h-4 w-4" />
   }
 
   if (loading) {
@@ -346,17 +421,21 @@ export default function JobRecommendationsPage() {
                             size="icon"
                             onClick={() => toggleSaveJob(job.id)}
                             className={`h-10 w-10 rounded-full transition-all ${job.saved
-                                ? "bg-primary/20 text-primary hover:bg-primary/30"
-                                : "hover:bg-white/10 text-muted-foreground hover:text-white"
+                              ? "bg-primary/20 text-primary hover:bg-primary/30"
+                              : "hover:bg-white/10 text-muted-foreground hover:text-white"
                               }`}
                           >
                             <Bookmark className={`h-5 w-5 ${job.saved ? "fill-current" : ""}`} />
                           </Button>
-                          <Button size="lg" className="bg-white/10 hover:bg-white/20 text-white border border-white/10 shadow-lg" asChild>
-                            <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                          <Button
+                            size="lg"
+                            className="bg-white/10 hover:bg-white/20 text-white border border-white/10 shadow-lg"
+                            onClick={() => handleApplyClick(job)}
+                          >
+                            <span className="flex items-center gap-2">
                               Apply Now
                               <ExternalLink className="h-4 w-4" />
-                            </a>
+                            </span>
                           </Button>
                         </div>
                       </div>
@@ -380,11 +459,11 @@ export default function JobRecommendationsPage() {
                           <div className="p-1.5 rounded-full bg-purple-500/10 text-purple-400">
                             <Clock className="h-4 w-4" />
                           </div>
-                          <span>Posted {new Date(job.created_at).toLocaleDateString()}</span>
+                          <span>Posted {new Date(job.created_at).toLocaleDateString("en-US")}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 rounded-full bg-orange-500/10 text-orange-400">
-                            <Briefcase className="h-4 w-4" />
+                            {getSourceIcon(job.source)}
                           </div>
                           <span>{job.source}</span>
                         </div>
@@ -410,6 +489,49 @@ export default function JobRecommendationsPage() {
           </div>
         )}
       </div>
+
+      {/* Smart Apply Dialog */}
+      <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-[#0A0A0F]/90 backdrop-blur-xl border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Smart Apply Tracking
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Would you like to automatically add this application to your dashboard?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Card className="bg-white/5 border-white/5">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-white">{selectedJob?.title}</p>
+                  <p className="text-sm text-muted-foreground">{selectedJob?.company}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-between w-full">
+            <Button
+              variant="ghost"
+              className="flex-1 hover:bg-white/5 text-muted-foreground"
+              onClick={() => handleSmartApply(false)}
+            >
+              No, just open link
+            </Button>
+            <Button
+              className="flex-1 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25"
+              onClick={() => handleSmartApply(true)}
+            >
+              Yes, Track Application
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
