@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/components/auth-provider"
 
 const items = [
   {
@@ -52,6 +53,11 @@ const items = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { user, signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    await signOut()
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 bg-transparent">
@@ -117,12 +123,14 @@ export function AppSidebar() {
                     className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl hover:bg-white/5 transition-colors"
                   >
                     <Avatar className="h-8 w-8 rounded-lg border border-white/10">
-                      <AvatarImage src="/placeholder.svg" />
-                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold">VD</AvatarFallback>
+                      <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder.svg"} />
+                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold">
+                        {user?.email?.substring(0, 2).toUpperCase() || "JD"}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Vedant Dhoke</span>
-                      <span className="truncate text-xs text-muted-foreground">Pro Plan</span>
+                      <span className="truncate font-semibold">{user?.user_metadata?.full_name || user?.email || "User"}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user?.email || "Pro Plan"}</span>
                     </div>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
@@ -130,15 +138,22 @@ export function AppSidebar() {
                   side="top"
                   className="w-[--radix-popper-anchor-width] bg-background/80 backdrop-blur-xl border-white/10 shadow-2xl rounded-xl"
                 >
-                  <DropdownMenuItem className="focus:bg-primary/10 focus:text-primary cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
+                  <DropdownMenuItem className="focus:bg-primary/10 focus:text-primary cursor-pointer" asChild>
+                    <Link href="/dashboard/settings">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-primary/10 focus:text-primary cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                  <DropdownMenuItem className="focus:bg-primary/10 focus:text-primary cursor-pointer" asChild>
+                    <Link href="/dashboard/settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-red-500 focus:bg-red-500/10 focus:text-red-500 cursor-pointer">
+                  <DropdownMenuItem
+                    className="text-red-500 focus:bg-red-500/10 focus:text-red-500 cursor-pointer"
+                    onClick={handleSignOut}
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>

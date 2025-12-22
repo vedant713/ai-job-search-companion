@@ -135,11 +135,9 @@ export class NotificationService {
 
   private async saveNotificationToDatabase(notification: Notification): Promise<void> {
     try {
-      await fetch("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(notification),
-      })
+      // TODO: Implement actual database storage once API or Supabase table is ready
+      // await supabase.from('notifications').insert(notification)
+      console.log("Saving notification (simulated):", notification.title)
     } catch (error) {
       console.error("Failed to save notification:", error)
     }

@@ -17,10 +17,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+import { useRouter } from "next/navigation"
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
     // Get initial session
@@ -56,11 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Error creating profile:", error)
           }
         }
+      } else if (event === "SIGNED_OUT") {
+        router.push("/")
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [router])
 
   const signUp = async (email: string, password: string) => {
     try {
@@ -98,6 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error
 
+      router.push("/dashboard")
+
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
@@ -117,6 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+
+      router.push("/")
 
       toast({
         title: "Signed out",
