@@ -37,12 +37,11 @@ export function RealTimeAnalytics() {
     taskCompletion: [],
   })
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLocalMode) {
       fetchAnalyticsData()
-      // Set up real-time subscription
       const subscription = supabase
         .channel("analytics_updates")
         .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => {
@@ -59,8 +58,10 @@ export function RealTimeAnalytics() {
       return () => {
         subscription.unsubscribe()
       }
+    } else if (isLocalMode) {
+      setLoading(false)
     }
-  }, [user])
+  }, [user, isLocalMode])
 
   const fetchAnalyticsData = async () => {
     try {

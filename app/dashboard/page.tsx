@@ -40,15 +40,17 @@ export default function DashboardPage() {
   const [recentTasks, setRecentTasks] = useState<any[]>([])
   const [aiQuery, setAiQuery] = useState("")
 
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLocalMode) {
       fetchDashboardData()
+    } else {
+      setLoading(false)
     }
-  }, [user])
+  }, [user, isLocalMode])
 
   const fetchDashboardData = async () => {
     try {

@@ -71,14 +71,16 @@ export default function SkillsPage() {
     target_proficiency: 0,
   })
 
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLocalMode) {
       fetchSkills()
+    } else {
+      setLoading(false)
     }
-  }, [user])
+  }, [user, isLocalMode])
 
   const fetchSkills = async () => {
     try {

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseServer, getUser } from "@/lib/supabase-server"
+import type { Skill } from "@/lib/supabase"
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,16 +41,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Skill name is required" }, { status: 400 })
     }
 
-    const { data, error } = await supabaseServer
+    const { data, error }: { data: Skill | null; error: any } = await (supabaseServer
       .from("skills")
       .insert({
         user_id: user.id,
         skill_name,
         proficiency,
         target_proficiency,
-      })
+      } as any)
       .select()
-      .single()
+      .single() as any)
 
     if (error) {
       console.error("Database error:", error)
@@ -77,13 +78,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Skill ID is required" }, { status: 400 })
     }
 
-    const { data, error } = await supabaseServer
+    const { data, error }: { data: Skill | null; error: any } = await (supabaseServer
       .from("skills")
-      .update(updates)
+      .update(updates as any)
       .eq("id", id)
       .eq("user_id", user.id)
       .select()
-      .single()
+      .single() as any)
 
     if (error) {
       console.error("Database error:", error)

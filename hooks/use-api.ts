@@ -1,16 +1,39 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { supabase } from "@/lib/supabase"
 import type { Application, Skill, Task, DashboardStats } from "@/lib/types"
 
-export function useApi() {
-  const { user } = useAuth()
-  const [loading, setLoading] = useState(false)
+const LOCAL_API_BASE = "/api/local"
 
-  // Applications
+export function useApi() {
+  const { user, isLocalMode } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [localMode, setLocalMode] = useState(false)
+
+  useEffect(() => {
+    setLocalMode(isLocalMode)
+  }, [isLocalMode])
+
   const fetchApplications = useCallback(async (): Promise<Application[]> => {
+    if (localMode) {
+      setLoading(true)
+      try {
+        const response = await fetch(`${LOCAL_API_BASE}/applications`)
+        if (response.ok) {
+          const data = await response.json()
+          return data.applications || []
+        }
+        return []
+      } catch (error) {
+        console.error("Error fetching applications from local API:", error)
+        return []
+      } finally {
+        setLoading(false)
+      }
+    }
+
     if (!user) return []
 
     try {
@@ -33,12 +56,33 @@ export function useApi() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, localMode])
 
   const addApplication = useCallback(
     async (
       application: Omit<Application, "id" | "user_id" | "created_at" | "updated_at">,
     ): Promise<Application | null> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/applications`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(application),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            return data.application
+          }
+          return null
+        } catch (error) {
+          console.error("Error adding application via local API:", error)
+          return null
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return null
 
       try {
@@ -67,11 +111,32 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
   const updateApplication = useCallback(
     async (id: string, updates: Partial<Application>): Promise<Application | null> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/applications/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            return data.application
+          }
+          return null
+        } catch (error) {
+          console.error("Error updating application via local API:", error)
+          return null
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return null
 
       try {
@@ -97,11 +162,26 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
   const deleteApplication = useCallback(
     async (id: string): Promise<boolean> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/applications/${id}`, {
+            method: "DELETE",
+          })
+          return response.ok
+        } catch (error) {
+          console.error("Error deleting application via local API:", error)
+          return false
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return false
 
       try {
@@ -121,11 +201,27 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
-  // Skills
   const fetchSkills = useCallback(async (): Promise<Skill[]> => {
+    if (localMode) {
+      setLoading(true)
+      try {
+        const response = await fetch(`${LOCAL_API_BASE}/skills`)
+        if (response.ok) {
+          const data = await response.json()
+          return data.skills || []
+        }
+        return []
+      } catch (error) {
+        console.error("Error fetching skills from local API:", error)
+        return []
+      } finally {
+        setLoading(false)
+      }
+    }
+
     if (!user) return []
 
     try {
@@ -144,10 +240,31 @@ export function useApi() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, localMode])
 
   const addSkill = useCallback(
     async (skill: Omit<Skill, "id" | "user_id" | "created_at" | "updated_at">): Promise<Skill | null> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/skills`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(skill),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            return data.skill
+          }
+          return null
+        } catch (error) {
+          console.error("Error adding skill via local API:", error)
+          return null
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return null
 
       try {
@@ -176,11 +293,32 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
   const updateSkill = useCallback(
     async (id: string, updates: Partial<Skill>): Promise<Skill | null> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/skills/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            return data.skill
+          }
+          return null
+        } catch (error) {
+          console.error("Error updating skill via local API:", error)
+          return null
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return null
 
       try {
@@ -206,11 +344,26 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
   const deleteSkill = useCallback(
     async (id: string): Promise<boolean> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/skills/${id}`, {
+            method: "DELETE",
+          })
+          return response.ok
+        } catch (error) {
+          console.error("Error deleting skill via local API:", error)
+          return false
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return false
 
       try {
@@ -230,11 +383,27 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
-  // Tasks
   const fetchTasks = useCallback(async (): Promise<Task[]> => {
+    if (localMode) {
+      setLoading(true)
+      try {
+        const response = await fetch(`${LOCAL_API_BASE}/tasks`)
+        if (response.ok) {
+          const data = await response.json()
+          return data.tasks || []
+        }
+        return []
+      } catch (error) {
+        console.error("Error fetching tasks from local API:", error)
+        return []
+      } finally {
+        setLoading(false)
+      }
+    }
+
     if (!user) return []
 
     try {
@@ -257,10 +426,31 @@ export function useApi() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, localMode])
 
   const addTask = useCallback(
     async (task: Omit<Task, "id" | "user_id" | "created_at" | "updated_at">): Promise<Task | null> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/tasks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(task),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            return data.task
+          }
+          return null
+        } catch (error) {
+          console.error("Error adding task via local API:", error)
+          return null
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return null
 
       try {
@@ -289,11 +479,32 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
   const updateTask = useCallback(
     async (id: string, updates: Partial<Task>): Promise<Task | null> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/tasks/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            return data.task
+          }
+          return null
+        } catch (error) {
+          console.error("Error updating task via local API:", error)
+          return null
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return null
 
       try {
@@ -319,11 +530,26 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
   const deleteTask = useCallback(
     async (id: string): Promise<boolean> => {
+      if (localMode) {
+        setLoading(true)
+        try {
+          const response = await fetch(`${LOCAL_API_BASE}/tasks/${id}`, {
+            method: "DELETE",
+          })
+          return response.ok
+        } catch (error) {
+          console.error("Error deleting task via local API:", error)
+          return false
+        } finally {
+          setLoading(false)
+        }
+      }
+
       if (!user) return false
 
       try {
@@ -343,17 +569,28 @@ export function useApi() {
         setLoading(false)
       }
     },
-    [user],
+    [user, localMode],
   )
 
-  // Dashboard Stats
   const fetchDashboardStats = useCallback(async (): Promise<DashboardStats | null> => {
+    if (localMode) {
+      try {
+        const response = await fetch(`${LOCAL_API_BASE}/stats`)
+        if (response.ok) {
+          return await response.json()
+        }
+        return null
+      } catch (error) {
+        console.error("Error fetching stats from local API:", error)
+        return null
+      }
+    }
+
     if (!user) return null
 
     try {
       setLoading(true)
 
-      // Fetch applications stats
       const { data: applications, error: appsError } = await supabase
         .from("applications")
         .select("status")
@@ -364,7 +601,6 @@ export function useApi() {
         return null
       }
 
-      // Fetch tasks stats
       const { data: tasks, error: tasksError } = await supabase
         .from("tasks")
         .select("is_complete")
@@ -374,7 +610,6 @@ export function useApi() {
         console.error("Error fetching tasks for dashboard:", tasksError)
       }
 
-      // Calculate stats
       const totalApplications = applications?.length || 0
       const appliedCount = applications?.filter((app) => app.status === "Applied").length || 0
       const interviewingCount = applications?.filter((app) => app.status === "Interviewing").length || 0
@@ -386,41 +621,50 @@ export function useApi() {
       const pendingTasks = totalTasks - completedTasks
 
       return {
-        totalApplications,
-        appliedCount,
-        interviewingCount,
-        offerCount,
-        rejectedCount,
-        totalTasks,
-        completedTasks,
-        pendingTasks,
-      }
+        applications: {
+          total: totalApplications,
+          applied: appliedCount,
+          interviewing: interviewingCount,
+          offers: offerCount,
+          rejected: rejectedCount,
+          responseRate: totalApplications > 0
+            ? Math.round(((offerCount + interviewingCount) / totalApplications) * 100)
+            : 0,
+          thisWeek: 0,
+        },
+        tasks: {
+          total: totalTasks,
+          completed: completedTasks,
+          pending: pendingTasks,
+        },
+        skills: {
+          total: 0,
+          averageLevel: 0,
+        },
+      } as DashboardStats
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
       return null
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, localMode])
 
   return {
     loading,
-    // Applications
+    localMode,
     fetchApplications,
     addApplication,
     updateApplication,
     deleteApplication,
-    // Skills
     fetchSkills,
     addSkill,
     updateSkill,
     deleteSkill,
-    // Tasks
     fetchTasks,
     addTask,
     updateTask,
     deleteTask,
-    // Dashboard
     fetchDashboardStats,
   }
 }

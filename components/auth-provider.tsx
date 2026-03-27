@@ -3,85 +3,91 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import type { User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
+interface MockUser {
+  id: string
+  email: string
+  user_metadata?: {
+    full_name?: string
+    avatar_url?: string
+  }
+}
+
 interface AuthContextType {
-  user: User | null
+  user: MockUser | null
   loading: boolean
   signUp: (email: string, password: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  isLocalMode: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-import { useRouter } from "next/navigation"
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<MockUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isLocalMode, setIsLocalMode] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }
+    const initAuth = async () => {
+      try {
+        const response = await fetch("/api/local/db", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "init" }),
+        })
 
-    getInitialSession()
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.email)
-      setUser(session?.user ?? null)
-      setLoading(false)
-
-      if (event === "SIGNED_IN") {
-        // Create profile if it doesn't exist
-        if (session?.user) {
-          const { error } = await supabase.from("profiles").upsert({
-            id: session.user.id,
-            email: session.user.email,
-            full_name: session.user.user_metadata?.full_name || "",
-            updated_at: new Date().toISOString(),
-          })
-
-          if (error) {
-            console.error("Error creating profile:", error)
+        if (response.ok) {
+          const data = await response.json()
+          setIsLocalMode(true)
+          
+          if (data.profile) {
+            setUser({
+              id: data.profile.id,
+              email: data.profile.email,
+              user_metadata: {
+                full_name: data.profile.full_name,
+                avatar_url: data.profile.avatar_url,
+              },
+            })
+          } else {
+            setUser({
+              id: data.userId,
+              email: "local@user.com",
+              user_metadata: {
+                full_name: "Local User",
+              },
+            })
           }
         }
-      } else if (event === "SIGNED_OUT") {
-        router.push("/")
+      } catch (error) {
+        console.error("Error initializing local auth:", error)
+        setIsLocalMode(true)
+        setUser({
+          id: "local-user-id",
+          email: "local@user.com",
+          user_metadata: {
+            full_name: "Local User",
+          },
+        })
+      } finally {
+        setLoading(false)
       }
-    })
+    }
 
-    return () => subscription.unsubscribe()
-  }, [router])
+    initAuth()
+  }, [])
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
-      })
-
-      if (error) throw error
-
       toast({
-        title: "Success!",
-        description: "Please check your email to confirm your account.",
+        title: "Local Mode",
+        description: "Sign up is disabled in local mode. Using default local user.",
       })
     } catch (error: any) {
       console.error("Signup error:", error)
@@ -96,24 +102,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch("/api/local/db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "getProfile" }),
       })
 
-      if (error) throw error
+      if (response.ok) {
+        const data = await response.json()
+        if (data.profile) {
+          setUser({
+            id: data.profile.id,
+            email: data.profile.email,
+            user_metadata: {
+              full_name: data.profile.full_name,
+              avatar_url: data.profile.avatar_url,
+            },
+          })
+        }
+      }
 
       router.push("/dashboard")
 
       toast({
         title: "Welcome back!",
-        description: "You have successfully signed in.",
+        description: "You are using local mode.",
       })
     } catch (error: any) {
       console.error("Signin error:", error)
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid email or password",
+        description: error.message || "An error occurred",
         variant: "destructive",
       })
       throw error
@@ -122,9 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-
+      setUser(null)
       router.push("/")
 
       toast({
@@ -147,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signIn,
     signOut,
+    isLocalMode,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

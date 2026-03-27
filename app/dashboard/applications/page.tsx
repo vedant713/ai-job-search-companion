@@ -52,14 +52,16 @@ export default function ApplicationsPage() {
     location: "",
   })
 
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLocalMode) {
       fetchApplications()
+    } else {
+      setLoading(false)
     }
-  }, [user])
+  }, [user, isLocalMode])
 
   const fetchApplications = async () => {
     try {

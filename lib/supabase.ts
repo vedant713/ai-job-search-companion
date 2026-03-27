@@ -1,11 +1,41 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, SupabaseClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co"
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+const useSupabase = process.env.NEXT_PUBLIC_USE_SUPABASE === "true"
+const isConfigured = useSupabase && supabaseUrl.startsWith("https://") && supabaseAnonKey.length > 0
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+function createDummyClient(): SupabaseClient {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      getUser: async () => ({ data: { user: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: { session: null, user: null }, error: { message: "Local mode" } }),
+      signUp: async () => ({ data: { session: null, user: null }, error: { message: "Local mode" } }),
+      signOut: async () => ({ error: null }),
+      refreshAccessToken: async () => ({ data: { session: null }, error: null }),
+    },
+    from: () => ({
+      select: () => ({ data: null, error: { message: "Local mode" }, eq: () => ({ data: null, error: null }) }),
+      insert: () => ({ data: null, error: { message: "Local mode" }, select: () => ({ data: null, error: null, single: () => ({ data: null, error: null }) }) }),
+      update: () => ({ data: null, error: { message: "Local mode" }, eq: () => ({ data: null, error: null }), select: () => ({ data: null, error: null, single: () => ({ data: null, error: null }) }) }),
+      delete: () => ({ data: null, error: { message: "Local mode" }, eq: () => ({ data: null, error: null }) }),
+    }),
+    channel: () => ({
+      on: () => ({ subscribe: () => ({}) }),
+      subscribe: () => ({}),
+      unsubscribe: () => {},
+    }),
+  } as unknown as SupabaseClient
+}
 
-// Types for our database
+export const supabase: SupabaseClient = isConfigured 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createDummyClient()
+
+export { isConfigured }
+
 export interface Database {
   public: {
     Tables: {
@@ -36,8 +66,7 @@ export interface Database {
           user_id: string
           company: string
           role: string
-          status: "Applied" | "Interviewing" | "Offer" | "Rejected"
-          date_applied: string
+          status: "Applied" | "Interviewing" | "Offer" | "Rejected" | "Saved"
           notes: string | null
           job_url: string | null
           salary_range: string | null
@@ -49,8 +78,7 @@ export interface Database {
           user_id: string
           company: string
           role: string
-          status?: "Applied" | "Interviewing" | "Offer" | "Rejected"
-          date_applied?: string
+          status?: "Applied" | "Interviewing" | "Offer" | "Rejected" | "Saved"
           notes?: string | null
           job_url?: string | null
           salary_range?: string | null
@@ -59,8 +87,7 @@ export interface Database {
         Update: {
           company?: string
           role?: string
-          status?: "Applied" | "Interviewing" | "Offer" | "Rejected"
-          date_applied?: string
+          status?: "Applied" | "Interviewing" | "Offer" | "Rejected" | "Saved"
           notes?: string | null
           job_url?: string | null
           salary_range?: string | null
@@ -153,6 +180,8 @@ export interface Database {
 }
 
 export type Application = Database["public"]["Tables"]["applications"]["Row"]
+export type ApplicationInsert = Database["public"]["Tables"]["applications"]["Insert"]
+export type ApplicationUpdate = Database["public"]["Tables"]["applications"]["Update"]
 export type Skill = Database["public"]["Tables"]["skills"]["Row"]
 export type Task = Database["public"]["Tables"]["tasks"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]

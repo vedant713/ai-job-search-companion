@@ -1,60 +1,63 @@
 export interface User {
-  id: number
-  name: string
+  id: string
   email: string
-  createdAt: string
-  updatedAt: string
+  full_name?: string
+  created_at: string
+  updated_at?: string
 }
 
 export interface Application {
-  id: number
-  userId: number
+  id: string
+  user_id: string
   company: string
   role: string
-  status: "Applied" | "Interviewing" | "Offer" | "Rejected"
-  dateApplied: string
+  status: "Applied" | "Interviewing" | "Offer" | "Rejected" | "Saved"
   notes?: string
-  createdAt: string
-  updatedAt: string
+  job_url?: string
+  salary_range?: string
+  location?: string
+  created_at: string
+  updated_at?: string
 }
 
 export interface Skill {
-  id: number
-  userId: number
-  skillName: string
+  id: string
+  user_id: string
+  skill_name: string
   proficiency: number
-  targetProficiency?: number
-  createdAt: string
-  updatedAt: string
+  target_proficiency?: number
+  category?: string
+  created_at: string
+  updated_at?: string
 }
 
 export interface Task {
-  id: number
-  userId: number
+  id: string
+  user_id: string
   description: string
-  dueDate?: string
-  isComplete: boolean
+  due_date?: string
+  is_complete: boolean
   priority: "Low" | "Medium" | "High"
-  tags: string[]
+  tags?: string[]
   context?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at?: string
 }
 
 export interface AIQuery {
-  id: number
-  userId: number
-  queryText: string
-  responseText: string
+  id: string
+  user_id: string
+  query_text: string
+  response_text: string
   context?: string
-  timestamp: string
+  created_at: string
 }
 
 export interface ChatMessage {
-  id: number
+  id: string
   role: "user" | "assistant"
   content: string
-  timestamp: Date
+  created_at: string
 }
 
 export interface SkillGap {
@@ -72,4 +75,39 @@ export interface ApplicationStats {
   offers: number
   rejected: number
   responseRate: number
+}
+
+export interface DashboardStats {
+  applications: {
+    total: number
+    applied: number
+    interviewing: number
+    offers: number
+    rejected: number
+    responseRate: number
+    thisWeek: number
+  }
+  tasks: {
+    total: number
+    completed: number
+    pending: number
+  }
+  skills: {
+    total: number
+    averageLevel: number
+  }
+}
+
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export interface PaginationParams {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
 }

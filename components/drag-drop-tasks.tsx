@@ -40,16 +40,16 @@ const statusColumns = [
 export function DragDropTasks({ tasks: propTasks, onTaskUpdate }: DragDropTasksProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
     if (propTasks) {
       setTasks(propTasks)
-    } else if (user) {
+    } else if (user && !isLocalMode) {
       fetchTasks()
     }
-  }, [propTasks, user])
+  }, [propTasks, user, isLocalMode])
 
   const fetchTasks = async () => {
     try {

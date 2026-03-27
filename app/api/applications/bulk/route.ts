@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Status is required for update" }, { status: 400 })
         }
 
-        const { error: updateError } = await supabaseServer
+        const { error: updateError } = await (supabaseServer
           .from("applications")
-          .update({ status: data.status })
+          .update({ status: data.status } as any)
           .in("id", ids)
-          .eq("user_id", user.id)
+          .eq("user_id", user.id) as any)
 
         if (updateError) {
           console.error("Bulk update error:", updateError)

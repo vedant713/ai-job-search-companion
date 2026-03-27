@@ -45,14 +45,16 @@ export default function TodosPage() {
     context: "",
   })
 
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLocalMode) {
       fetchTasks()
+    } else {
+      setLoading(false)
     }
-  }, [user])
+  }, [user, isLocalMode])
 
   const fetchTasks = async () => {
     try {

@@ -136,7 +136,7 @@ export default function JobRecommendationsPage() {
   const [selectedJob, setSelectedJob] = useState<JobRecommendation | null>(null)
   const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false)
 
-  const { user } = useAuth()
+  const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -217,7 +217,7 @@ export default function JobRecommendationsPage() {
   const handleSmartApply = async (shouldTrack: boolean) => {
     if (!selectedJob) return
 
-    if (shouldTrack && user) {
+    if (shouldTrack && user && !isLocalMode) {
       try {
         const { error } = await supabase.from("applications").insert({
           user_id: user.id,
@@ -244,6 +244,11 @@ export default function JobRecommendationsPage() {
           variant: "destructive"
         })
       }
+    } else if (shouldTrack && isLocalMode) {
+      toast({
+        title: "Local Mode",
+        description: "Application tracking is not available in local mode.",
+      })
     }
 
     // Open job URL in new tab
