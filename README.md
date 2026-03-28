@@ -1,6 +1,8 @@
-# AI Job Assistant
+# AI Job Search Companion
 
 A comprehensive AI-powered job application tracking and career management platform built with Next.js, TypeScript, Supabase, and Google Gemini AI.
+
+> **Note:** This application supports both cloud (Supabase) and local (SQLite) storage modes for flexibility and offline usage.
 
 ## Features
 
@@ -9,13 +11,15 @@ A comprehensive AI-powered job application tracking and career management platfo
 - **Skill Development**: Visualize skill gaps with radar charts and AI recommendations
 - **Smart To-Do Management**: Context-aware tasks with priority levels and due dates
 - **AI Career Assistant**: Chat interface powered by Google Gemini for personalized advice
+- **Email Integration**: Import and parse job application emails from Gmail
+- **Local Storage Mode**: SQLite-based local database for offline usage
 
 ### 🤖 AI Capabilities
 - Resume enhancement and optimization
 - Cover letter writing assistance
 - Interview preparation and practice questions
 - Job description analysis
-- Skill gap identification
+- Skill gap identification and parsing from resumes
 - Networking message templates
 - Salary negotiation guidance
 
@@ -37,7 +41,8 @@ A comprehensive AI-powered job application tracking and career management platfo
 
 ### Backend
 - **Next.js API Routes** for serverless functions
-- **Supabase** for database and authentication
+- **Supabase** for database and authentication (cloud mode)
+- **SQLite / better-sqlite3** for local storage mode
 - **PostgreSQL** (via Supabase)
 
 ### AI Integration
@@ -50,8 +55,9 @@ A comprehensive AI-powered job application tracking and career management platfo
 
 ### Prerequisites
 - Node.js 18+ and npm/pnpm
-- Supabase project
+- Supabase project (for cloud mode)
 - Google Gemini API key
+- Gmail API credentials (for email import feature)
 
 ### Installation
 
@@ -74,9 +80,17 @@ Create a `.env.local` file in the root directory:
 # AI Integration
 GEMINI_API_KEY="your-google-gemini-api-key"
 
-# Supabase Configuration
+# Supabase Configuration (cloud mode)
 NEXT_PUBLIC_SUPABASE_URL="your-supabase-project-url"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+
+# Gmail API (email import feature)
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_REDIRECT_URI="http://localhost:3000/api/email/callback"
+
+# Local Mode (optional - uses local.db SQLite file)
+# No additional env vars needed
 ```
 
 4. **Run the development server**
@@ -91,31 +105,41 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 ## Project Structure
 
 ```
-ai-job-assistant/
+ai-job-search-companion/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
 │   │   ├── applications/         # Job applications CRUD
 │   │   ├── skills/              # Skills management
 │   │   ├── tasks/               # Task management
-│   │   └── ai/                  # AI chat integration
+│   │   ├── ai/                  # AI chat integration
+│   │   ├── email/               # Email import & parsing
+│   │   └── local/               # Local storage mode APIs
 │   ├── dashboard/               # Main application pages
 │   │   ├── applications/        # Applications management
 │   │   ├── skills/             # Skill visualization
 │   │   ├── todos/              # Task management
-│   │   └── ai-assistant/       # AI chat interface
+│   │   ├── ai-assistant/       # AI chat interface
+│   │   └── email-import/       # Gmail import page
 │   ├── layout.tsx              # Root layout
 │   └── page.tsx                # Landing/login page
 ├── components/                  # Reusable components
 │   ├── ui/                     # shadcn/ui components
 │   ├── app-sidebar.tsx         # Navigation sidebar
 │   ├── login-form.tsx          # Authentication form
+│   ├── drag-drop-tasks.tsx     # Draggable task list
 │   └── auth-provider.tsx       # Authentication context
 ├── lib/                        # Utility libraries
-│   ├── types.ts               # TypeScript interfaces
+│   ├── types.ts               # TypeScript interfaces & type guards
 │   ├── auth.ts                # Authentication utilities
-│   ├── gemini.ts              # AI integration
-│   └── supabase.ts            # Supabase client
-└── README.md
+│   ├── gemini.ts              # AI integration (Google Gemini)
+│   ├── email-parser.ts        # Email parsing utilities
+│   ├── local-db.ts            # SQLite local database layer
+│   ├── supabase.ts            # Supabase client
+│   └── utils.ts               # General utility functions
+├── tests/                      # Test files (*test.ts)
+├── local.db                    # SQLite database (local mode)
+├── supabase-schema.sql         # Database schema for Supabase
+└── package.json                # Dependencies & scripts
 ```
 
 ## Key Features Explained
@@ -135,6 +159,7 @@ ai-job-assistant/
 ### 3. Skill Development
 - Interactive radar charts comparing current vs target skills
 - AI-powered skill recommendations
+- **AI Skill Parsing**: Automatically extract skills from resume text
 - Learning resource suggestions
 - Progress tracking over time
 
@@ -143,12 +168,25 @@ ai-job-assistant/
 - Priority-based organization
 - Due date tracking and reminders
 - AI-suggested tasks based on applications
+- **Drag-and-drop** reordering
 
 ### 5. AI Assistant Integration
 - Natural language processing with Google Gemini
 - Context-aware responses
 - Prompt suggestions for common scenarios
 - Conversation history and analytics
+
+### 6. Email Import (NEW)
+- Connect Gmail account via OAuth
+- Automatically parse job application emails
+- Extract company names, positions, and dates
+- Bulk import applications into tracker
+
+### 7. Local Storage Mode (NEW)
+- SQLite-based local database (`local.db`)
+- Works offline without Supabase
+- Seamless fallback when cloud credentials unavailable
+- Same API interface as cloud mode
 
 ## API Endpoints
 
@@ -167,23 +205,37 @@ ai-job-assistant/
 - `GET /api/skills` - Fetch user skills
 - `POST /api/skills` - Add new skill
 - `PUT /api/skills` - Update skill proficiency
+- `POST /api/local/skills/parse` - AI-powered skill extraction from text
 
 ### Tasks
 - `GET /api/tasks` - Fetch user tasks
 - `POST /api/tasks` - Create new task
 - `PUT /api/tasks` - Update task status
+- `GET /api/local/tasks` - Local mode task operations
 
 ### AI Integration
 - `POST /api/ai/chat` - Send message to AI assistant
 - `GET /api/ai/suggestions` - Get AI-powered suggestions
 
+### Email Import
+- `GET /api/email` - Initiate Gmail OAuth flow
+- `GET /api/email/callback` - OAuth callback handler
+- `GET /api/email/applications` - Fetch parsed application emails
+
 ## Database Schema
 
-The application uses a Supabase (PostgreSQL) database. The schema is managed via Supabase but generally includes:
+### Cloud Mode (Supabase/PostgreSQL)
+The application uses a Supabase (PostgreSQL) database. See `supabase-schema.sql` for the full schema. Main tables include:
 - `applications` - Job application tracking
 - `skills` - User skills and proficiency levels
 - `tasks` - To-do items with context and priorities
 - `notifications` - System notifications
+
+### Local Mode (SQLite)
+- Uses `local.db` file in the project root
+- Same data model as cloud mode
+- Automatically created on first run
+- No authentication required
 
 ## Security Features
 
@@ -191,6 +243,24 @@ The application uses a Supabase (PostgreSQL) database. The schema is managed via
 - Row Level Security (RLS) policies
 - Environment variable protection
 - Rate limiting on API endpoints
+- OAuth 2.0 for Gmail integration
+- JWT token validation for API requests
+
+## Testing
+
+Run tests with:
+```bash
+npm test
+# or
+pnpm test
+```
+
+### Test Coverage
+- **Authentication** (`lib/auth.test.ts`) - Login, token validation, user management
+- **Components** (`components/*test.tsx`) - UI component rendering and interactions
+- **Types** (`lib/types.test.ts`) - Type guards and validation functions
+- **Utils** (`lib/utils.test.ts`) - Utility function testing
+- **Local DB** (`lib/local-db.test.ts`) - SQLite database operations
 
 ## Performance Optimizations
 
@@ -238,15 +308,18 @@ For support and questions:
 ### Upcoming Features
 - Mobile app development
 - Advanced analytics dashboard
-- Integration with job boards
+- Integration with job boards (LinkedIn, Indeed)
 - Team collaboration features
 - Advanced AI coaching
 - Resume parsing and optimization
 - Interview scheduling integration
 - Salary benchmarking tools
+- AI-powered job recommendations
 
 ### Version History
 - v1.0.0 - Initial release with core features
 - v1.1.0 - Enhanced AI capabilities
 - v1.2.0 - Mobile responsiveness improvements
 - v2.0.0 - Advanced analytics and reporting
+- v2.1.0 - Email integration and local storage mode
+- v2.1.1 - Comprehensive test coverage
