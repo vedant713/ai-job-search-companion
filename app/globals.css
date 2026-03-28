@@ -96,10 +96,10 @@
   }
 }
 
-/* Custom scrollbar for sleeker look */
+/* Custom scrollbar for applications table */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -107,10 +107,14 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
+  background: hsl(var(--muted-foreground) / 0.5);
   border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.7);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }

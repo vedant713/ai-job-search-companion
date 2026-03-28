@@ -68,16 +68,27 @@ export default function ApplicationsPage() {
       if (isLocalMode) {
         const response = await fetch("/api/local/applications")
         const { applications: localApps } = await response.json()
-        const mappedApps = localApps.map((app: any) => ({
-          ...app,
-          company: app.company || "Unknown Company",
-          role: app.role || "Unknown Role",
-          status: app.status || "Applied",
-          date_applied: app.date_applied || app.created_at,
-          created_at: app.created_at || app.date_applied,
-          updated_at: app.updated_at || app.date_applied,
-        }))
-        setApplications(mappedApps)
+        const mappedApps = localApps.map((app: any) => {
+          const company = (app.company && !app.company.includes('<') && app.company.length < 100) 
+            ? app.company 
+            : "Unknown Company"
+          const role = (app.role && !app.role.includes('<') && app.role.length < 100) 
+            ? app.role 
+            : "Unknown Role"
+          
+          return {
+            ...app,
+            id: app.id,
+            user_id: app.user_id,
+            company,
+            role,
+            status: app.status || "Applied",
+            date_applied: app.date_applied || app.created_at,
+            created_at: app.created_at || app.date_applied,
+            updated_at: app.updated_at || app.date_applied,
+          }
+        })
+setApplications(mappedApps)
       } else {
         const { data, error } = await supabase
           .from("applications")
@@ -101,36 +112,59 @@ export default function ApplicationsPage() {
   }
 
   const handleAddApplication = async () => {
-    if (!user) return
+    if (!user && !isLocalMode) return
 
     try {
-      const { data, error } = await supabase
-        .from("applications")
-        .insert({
-          ...newApplication,
-          user_id: user.id,
+      if (isLocalMode) {
+        await fetch("/api/local/applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newApplication),
         })
-        .select()
-        .single()
+        await fetchApplications()
+        setNewApplication({
+          company: "",
+          role: "",
+          status: "Applied",
+          notes: "",
+          job_url: "",
+          salary_range: "",
+          location: "",
+        })
+        setIsAddDialogOpen(false)
+        toast({
+          title: "Success",
+          description: "Application added successfully",
+        })
+      } else {
+        const { data, error } = await supabase
+          .from("applications")
+          .insert({
+            ...newApplication,
+            user_id: user!.id,
+          })
+          .select()
+          .single()
 
-      if (error) throw error
+        if (error) throw error
 
-      setApplications([data, ...applications])
-      setNewApplication({
-        company: "",
-        role: "",
-        status: "Applied",
-        notes: "",
-        job_url: "",
-        salary_range: "",
-        location: "",
-      })
-      setIsAddDialogOpen(false)
+        setApplications([data, ...applications])
+        setNewApplication({
+          company: "",
+          role: "",
+          status: "Applied",
+          notes: "",
+          job_url: "",
+          salary_range: "",
+          location: "",
+        })
+        setIsAddDialogOpen(false)
 
-      toast({
-        title: "Success",
-        description: "Application added successfully",
-      })
+        toast({
+          title: "Success",
+          description: "Application added successfully",
+        })
+      }
     } catch (error: any) {
       console.error("Error adding application:", error)
       toast({
@@ -142,36 +176,59 @@ export default function ApplicationsPage() {
   }
 
   const handleEditApplication = async () => {
-    if (!editingApplication || !user) return
+    if (!editingApplication || (!user && !isLocalMode)) return
 
     try {
-      const { data, error } = await supabase
-        .from("applications")
-        .update({
-          company: editingApplication.company,
-          role: editingApplication.role,
-          status: editingApplication.status,
-          notes: editingApplication.notes,
-          job_url: editingApplication.job_url,
-          salary_range: editingApplication.salary_range,
-          location: editingApplication.location,
-          updated_at: new Date().toISOString(),
+      if (isLocalMode) {
+        await fetch(`/api/local/applications/${editingApplication.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company: editingApplication.company,
+            role: editingApplication.role,
+            status: editingApplication.status,
+            notes: editingApplication.notes,
+            job_url: editingApplication.job_url,
+            salary_range: editingApplication.salary_range,
+            location: editingApplication.location,
+          }),
         })
-        .eq("id", editingApplication.id)
-        .eq("user_id", user.id)
-        .select()
-        .single()
+        await fetchApplications()
+        setEditingApplication(null)
+        setIsEditDialogOpen(false)
+        toast({
+          title: "Success",
+          description: "Application updated successfully",
+        })
+      } else {
+        const { data, error } = await supabase
+          .from("applications")
+          .update({
+            company: editingApplication.company,
+            role: editingApplication.role,
+            status: editingApplication.status,
+            notes: editingApplication.notes,
+            job_url: editingApplication.job_url,
+            salary_range: editingApplication.salary_range,
+            location: editingApplication.location,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingApplication.id)
+          .eq("user_id", user!.id)
+          .select()
+          .single()
 
-      if (error) throw error
+        if (error) throw error
 
-      setApplications(applications.map((app) => (app.id === editingApplication.id ? data : app)))
-      setEditingApplication(null)
-      setIsEditDialogOpen(false)
+        setApplications(applications.map((app) => (app.id === editingApplication.id ? data : app)))
+        setEditingApplication(null)
+        setIsEditDialogOpen(false)
 
-      toast({
-        title: "Success",
-        description: "Application updated successfully",
-      })
+        toast({
+          title: "Success",
+          description: "Application updated successfully",
+        })
+      }
     } catch (error: any) {
       console.error("Error updating application:", error)
       toast({
@@ -183,19 +240,28 @@ export default function ApplicationsPage() {
   }
 
   const handleDeleteApplication = async (id: string) => {
-    if (!user) return
+    if (!user && !isLocalMode) return
 
     try {
-      const { error } = await supabase.from("applications").delete().eq("id", id).eq("user_id", user.id)
+      if (isLocalMode) {
+        await fetch(`/api/local/applications/${id}`, { method: "DELETE" })
+        await fetchApplications()
+        toast({
+          title: "Success",
+          description: "Application deleted successfully",
+        })
+      } else {
+        const { error } = await supabase.from("applications").delete().eq("id", id).eq("user_id", user!.id)
 
-      if (error) throw error
+        if (error) throw error
 
-      setApplications(applications.filter((app) => app.id !== id))
+        setApplications(applications.filter((app) => app.id !== id))
 
-      toast({
-        title: "Success",
-        description: "Application deleted successfully",
-      })
+        toast({
+          title: "Success",
+          description: "Application deleted successfully",
+        })
+      }
     } catch (error: any) {
       console.error("Error deleting application:", error)
       toast({
@@ -208,17 +274,29 @@ export default function ApplicationsPage() {
 
   const handleBulkDelete = async (ids: string[]) => {
     try {
-      const { error } = await supabase.from("applications").delete().in("id", ids)
+      if (isLocalMode) {
+        for (const id of ids) {
+          await fetch(`/api/local/applications/${id}`, { method: "DELETE" })
+        }
+        await fetchApplications()
+        setSelectedApplications([])
+        toast({
+          title: "Success",
+          description: `${ids.length} applications deleted`,
+        })
+      } else {
+        const { error } = await supabase.from("applications").delete().in("id", ids)
 
-      if (error) throw error
+        if (error) throw error
 
-      setApplications(applications.filter((app) => !ids.includes(app.id)))
-      setSelectedApplications([])
+        setApplications(applications.filter((app) => !ids.includes(app.id)))
+        setSelectedApplications([])
 
-      toast({
-        title: "Success",
-        description: `${ids.length} applications deleted`,
-      })
+        toast({
+          title: "Success",
+          description: `${ids.length} applications deleted`,
+        })
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -230,16 +308,31 @@ export default function ApplicationsPage() {
 
   const handleBulkStatusUpdate = async (ids: string[], status: string) => {
     try {
-      const { error } = await supabase.from("applications").update({ status }).in("id", ids)
+      if (isLocalMode) {
+        for (const id of ids) {
+          await fetch(`/api/local/applications/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          })
+        }
+        await fetchApplications()
+        toast({
+          title: "Success",
+          description: `${ids.length} applications updated`,
+        })
+      } else {
+        const { error } = await supabase.from("applications").update({ status }).in("id", ids)
 
-      if (error) throw error
+        if (error) throw error
 
-      setApplications(applications.map((app) => (ids.includes(app.id) ? { ...app, status: status as any } : app)))
+        setApplications(applications.map((app) => (ids.includes(app.id) ? { ...app, status: status as any } : app)))
 
-      toast({
-        title: "Success",
-        description: `${ids.length} applications updated`,
-      })
+        toast({
+          title: "Success",
+          description: `${ids.length} applications updated`,
+        })
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -250,11 +343,16 @@ export default function ApplicationsPage() {
   }
 
   const filteredApplications = applications.filter((app) => {
-    const matchesSearch =
-      app.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.role.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter
-    return matchesSearch && matchesStatus
+    try {
+      const matchesSearch =
+        (app.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (app.role || '').toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = statusFilter === "all" || app.status === statusFilter
+      return matchesSearch && matchesStatus
+    } catch (err) {
+      console.error('[FILTER ERROR] app:', app, 'error:', err)
+      return false
+    }
   })
 
   if (loading) {
@@ -262,7 +360,7 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="space-y-8 p-8 max-w-7xl mx-auto h-[calc(100vh-theme(spacing.4))] flex flex-col">
+    <div className="space-y-4 p-8 max-w-7xl mx-auto h-screen overflow-hidden flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
@@ -472,7 +570,7 @@ export default function ApplicationsPage() {
       />
 
       {/* Applications Table - Glassmorphism */}
-      <Card className="glass-card flex-1 overflow-hidden border-white/10 bg-gradient-to-br from-card/50 to-card/10">
+      <Card className="glass-card flex-1 min-h-0 overflow-hidden border-white/10 bg-gradient-to-br from-card/50 to-card/10">
         <CardHeader className="border-b border-white/5 bg-white/5 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -482,7 +580,7 @@ export default function ApplicationsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 flex-1 overflow-hidden">
           {filteredApplications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="h-16 w-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
@@ -498,7 +596,7 @@ export default function ApplicationsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-auto">
+            <div className="overflow-auto h-full min-h-0">
               <Table>
                 <TableHeader className="bg-white/5">
                   <TableRow className="border-white/5 hover:bg-transparent">

@@ -1,6 +1,16 @@
 import { google } from "googleapis"
 import nodemailer from "nodemailer"
 
+function stripHtml(html: string): string {
+  let text = html
+  text = text.replace(/<br\s*\/?>/gi, '\n')
+  text = text.replace(/<\/p>/gi, '\n')
+  text = text.replace(/<[^>]*>/g, '')
+  text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  text = text.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+  return text.trim().replace(/\s+/g, ' ')
+}
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.GMAIL_CLIENT_ID,
   process.env.GMAIL_CLIENT_SECRET,
@@ -141,6 +151,7 @@ export function parseLinkedInEmail(email: EmailMessage): Partial<ParsedApplicati
     return null
   }
 
+  const plainBody = stripHtml(body)
   const result: Partial<ParsedApplication> = {
     source: "email",
     email_subject: subject,
@@ -148,23 +159,23 @@ export function parseLinkedInEmail(email: EmailMessage): Partial<ParsedApplicati
     email_date: email.date
   }
 
-  const companyMatch = subject.match(/application to (.+?) for /i) || body.match(/company[:\s]+(.+?)(?:\n|$)/i)
+  const companyMatch = subject.match(/application to (.+?) for /i) || plainBody.match(/company[:\s]+(.+?)(?:\n|$)/i)
   if (companyMatch) result.company = companyMatch[1].trim()
 
-  const roleMatch = subject.match(/for (.+?)(?:\"|$)/i) || body.match(/role[:\s]+(.+?)(?:\n|$)/i)
+  const roleMatch = subject.match(/for (.+?)(?:\"|$)/i) || plainBody.match(/role[:\s]+(.+?)(?:\n|$)/i)
   if (roleMatch) result.role = roleMatch[1].trim()
 
-  const dateMatch = body.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
-                    body.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+  const dateMatch = plainBody.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
+                    plainBody.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
   if (dateMatch) {
     const parsed = new Date(dateMatch[1])
     if (!isNaN(parsed.getTime())) result.date_applied = parsed.toISOString()
   }
 
-  const urlMatch = body.match(/https?:\/\/[^\s<>"]+\/(?:jobs|positions|apply)[^\s<>"]*/i)
+  const urlMatch = plainBody.match(/https?:\/\/[^\s<>"]+\/(?:jobs|positions|apply)[^\s<>"]*/i)
   if (urlMatch) result.job_url = urlMatch[0]
 
-  const locationMatch = body.match(/location[:\s]+(.+?)(?:\n|$)/i)
+  const locationMatch = plainBody.match(/location[:\s]+(.+?)(?:\n|$)/i)
   if (locationMatch) result.location = locationMatch[1].trim()
 
   return result.company || result.role ? result : null
@@ -177,6 +188,7 @@ export function parseIndeedEmail(email: EmailMessage): Partial<ParsedApplication
     return null
   }
 
+  const plainBody = stripHtml(body)
   const result: Partial<ParsedApplication> = {
     source: "email",
     email_subject: subject,
@@ -184,27 +196,27 @@ export function parseIndeedEmail(email: EmailMessage): Partial<ParsedApplication
     email_date: email.date
   }
 
-  const roleMatch = subject.match(/Indeed Apply:\s*(.+?)\s*at/i) || body.match(/position[:\s]+(.+?)(?:\n|$)/i)
+  const roleMatch = subject.match(/Indeed Apply:\s*(.+?)\s*at/i) || plainBody.match(/position[:\s]+(.+?)(?:\n|$)/i)
   if (roleMatch) result.role = roleMatch[1].trim()
 
-  const companyMatch = subject.match(/at\s+(.+?)(?:\"|$)/i) || body.match(/company[:\s]+(.+?)(?:\n|$)/i)
+  const companyMatch = subject.match(/at\s+(.+?)(?:\"|$)/i) || plainBody.match(/company[:\s]+(.+?)(?:\n|$)/i)
   if (companyMatch) result.company = companyMatch[1].trim()
 
-  const dateMatch = body.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
-                    body.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+  const dateMatch = plainBody.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
+                    plainBody.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
   if (dateMatch) {
     const parsed = new Date(dateMatch[1])
     if (!isNaN(parsed.getTime())) result.date_applied = parsed.toISOString()
   }
 
-  const urlMatch = body.match(/https?:\/\/[^\s<>"]+\.indeed\.com[^\s<>"]*/i) ||
-                   body.match(/https?:\/\/[^\s<>"]+\/(?:jobs|apply)[^\s<>"]*/i)
+  const urlMatch = plainBody.match(/https?:\/\/[^\s<>"]+\.indeed\.com[^\s<>"]*/i) ||
+                   plainBody.match(/https?:\/\/[^\s<>"]+\/(?:jobs|apply)[^\s<>"]*/i)
   if (urlMatch) result.job_url = urlMatch[0]
 
-  const salaryMatch = body.match(/\$[\d,]+(?:\s*-\s*\$[\d,]+)?(?:\s*\/year)?/i)
+  const salaryMatch = plainBody.match(/\$[\d,]+(?:\s*-\s*\$[\d,]+)?(?:\s*\/year)?/i)
   if (salaryMatch) result.salary_range = salaryMatch[0]
 
-  const locationMatch = body.match(/location[:\s]+(.+?)(?:\n|$)/i) || body.match(/(?:remote|hybrid|on-site)[:\s]*(.+?)(?:\n|$)/i)
+  const locationMatch = plainBody.match(/location[:\s]+(.+?)(?:\n|$)/i) || plainBody.match(/(?:remote|hybrid|on-site)[:\s]*(.+?)(?:\n|$)/i)
   if (locationMatch) result.location = locationMatch[1].trim()
 
   return result.company || result.role ? result : null
@@ -217,6 +229,7 @@ export function parseGlassdoorEmail(email: EmailMessage): Partial<ParsedApplicat
     return null
   }
 
+  const plainBody = stripHtml(body)
   const result: Partial<ParsedApplication> = {
     source: "email",
     email_subject: subject,
@@ -224,25 +237,25 @@ export function parseGlassdoorEmail(email: EmailMessage): Partial<ParsedApplicat
     email_date: email.date
   }
 
-  const companyMatch = subject.match(/at\s+(.+?)(?:\"|$)/i) || body.match(/company[:\s]+(.+?)(?:\n|$)/i)
+  const companyMatch = subject.match(/at\s+(.+?)(?:\"|$)/i) || plainBody.match(/company[:\s]+(.+?)(?:\n|$)/i)
   if (companyMatch) result.company = companyMatch[1].trim()
 
-  const roleMatch = subject.match(/Application[:\s]*(.+?)\s*at/i) || body.match(/position[:\s]+(.+?)(?:\n|$)/i)
+  const roleMatch = subject.match(/Application[:\s]*(.+?)\s*at/i) || plainBody.match(/position[:\s]+(.+?)(?:\n|$)/i)
   if (roleMatch) result.role = roleMatch[1].trim()
 
-  const dateMatch = body.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
-                    body.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+  const dateMatch = plainBody.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
+                    plainBody.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
   if (dateMatch) {
     const parsed = new Date(dateMatch[1])
     if (!isNaN(parsed.getTime())) result.date_applied = parsed.toISOString()
   }
 
-  const urlMatch = body.match(/https?:\/\/[^\s<>"]+\.glassdoor\.com[^\s<>"]*/i)
+  const urlMatch = plainBody.match(/https?:\/\/[^\s<>"]+\.glassdoor\.com[^\s<>"]*/i)
   if (urlMatch) result.job_url = urlMatch[0]
 
-  const locationMatch = body.match(/location[:\s]+(.+?)(?:\n|$)/i)
+  const locationMatch = plainBody.match(/location[:\s]+(.+?)(?:\n|$)/i)
   if (locationMatch) result.location = locationMatch[1].trim()
-  else if (body.toLowerCase().includes("remote")) result.location = "Remote"
+  else if (plainBody.toLowerCase().includes("remote")) result.location = "Remote"
 
   return result.company || result.role ? result : null
 }
@@ -254,6 +267,7 @@ export function parseGreenhouseEmail(email: EmailMessage): Partial<ParsedApplica
     return null
   }
 
+  const plainBody = stripHtml(body)
   const result: Partial<ParsedApplication> = {
     source: "email",
     email_subject: subject,
@@ -261,24 +275,24 @@ export function parseGreenhouseEmail(email: EmailMessage): Partial<ParsedApplica
     email_date: email.date
   }
 
-  const companyMatch = body.match(/company[:\s]+(.+?)(?:\n|$)/i)
+  const companyMatch = plainBody.match(/company[:\s]+(.+?)(?:\n|$)/i)
   if (companyMatch) result.company = companyMatch[1].trim()
 
-  const roleMatch = body.match(/application for (.+?)(?:\n|$)/i) || body.match(/position[:\s]+(.+?)(?:\n|$)/i)
+  const roleMatch = plainBody.match(/application for (.+?)(?:\n|$)/i) || plainBody.match(/position[:\s]+(.+?)(?:\n|$)/i)
   if (roleMatch) result.role = roleMatch[1].trim()
 
-  const dateMatch = body.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
-                    body.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+  const dateMatch = plainBody.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
+                    plainBody.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
   if (dateMatch) {
     const parsed = new Date(dateMatch[1])
     if (!isNaN(parsed.getTime())) result.date_applied = parsed.toISOString()
   }
 
-  const urlMatch = body.match(/https?:\/\/[^\s<>"]+\.greenhouse\.io[^\s<>"]*/i) ||
-                   body.match(/https?:\/\/[^\s<>"]+\/(?:jobs|applications)[^\s<>"]*/i)
+  const urlMatch = plainBody.match(/https?:\/\/[^\s<>"]+\.greenhouse\.io[^\s<>"]*/i) ||
+                   plainBody.match(/https?:\/\/[^\s<>"]+\/(?:jobs|applications)[^\s<>"]*/i)
   if (urlMatch) result.job_url = urlMatch[0]
 
-  const locationMatch = body.match(/location[:\s]+(.+?)(?:\n|$)/i)
+  const locationMatch = plainBody.match(/location[:\s]+(.+?)(?:\n|$)/i)
   if (locationMatch) result.location = locationMatch[1].trim()
 
   return result.company || result.role ? result : null
@@ -291,6 +305,7 @@ export function parseLeverEmail(email: EmailMessage): Partial<ParsedApplication>
     return null
   }
 
+  const plainBody = stripHtml(body)
   const result: Partial<ParsedApplication> = {
     source: "email",
     email_subject: subject,
@@ -298,24 +313,24 @@ export function parseLeverEmail(email: EmailMessage): Partial<ParsedApplication>
     email_date: email.date
   }
 
-  const companyMatch = body.match(/company[:\s]+(.+?)(?:\n|$)/i)
+  const companyMatch = plainBody.match(/company[:\s]+(.+?)(?:\n|$)/i)
   if (companyMatch) result.company = companyMatch[1].trim()
 
-  const roleMatch = body.match(/application for (.+?)(?:\n|$)/i) || body.match(/position[:\s]+(.+?)(?:\n|$)/i)
+  const roleMatch = plainBody.match(/application for (.+?)(?:\n|$)/i) || plainBody.match(/position[:\s]+(.+?)(?:\n|$)/i)
   if (roleMatch) result.role = roleMatch[1].trim()
 
-  const dateMatch = body.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
-                    body.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
+  const dateMatch = plainBody.match(/applied on ([A-Z][a-z]+ \d{1,2},?\s*\d{4})/i) ||
+                    plainBody.match(/date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i)
   if (dateMatch) {
     const parsed = new Date(dateMatch[1])
     if (!isNaN(parsed.getTime())) result.date_applied = parsed.toISOString()
   }
 
-  const urlMatch = body.match(/https?:\/\/[^\s<>"]+\.lever\.co[^\s<>"]*/i) ||
-                   body.match(/https?:\/\/[^\s<>"]+\/(?:jobs|apply)[^\s<>"]*/i)
+  const urlMatch = plainBody.match(/https?:\/\/[^\s<>"]+\.lever\.co[^\s<>"]*/i) ||
+                   plainBody.match(/https?:\/\/[^\s<>"]+\/(?:jobs|apply)[^\s<>"]*/i)
   if (urlMatch) result.job_url = urlMatch[0]
 
-  const locationMatch = body.match(/location[:\s]+(.+?)(?:\n|$)/i)
+  const locationMatch = plainBody.match(/location[:\s]+(.+?)(?:\n|$)/i)
   if (locationMatch) result.location = locationMatch[1].trim()
 
   return result.company || result.role ? result : null
@@ -324,6 +339,7 @@ export function parseLeverEmail(email: EmailMessage): Partial<ParsedApplication>
 export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplication> | null {
   const { subject, body } = email
 
+  const plainBody = stripHtml(body)
   const result: Partial<ParsedApplication> = {
     source: "email",
     email_subject: subject,
@@ -332,12 +348,13 @@ export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplicatio
   }
 
   const companyPatterns = [
+    /your application was sent to (.+?)(?:\n|$)/i,
     /company[:\s]+(.+?)(?:\n|$)/i,
     /applied to (.+?)(?:\n|for)/i,
     /application at (.+?)(?:\n|$)/i
   ]
   for (const pattern of companyPatterns) {
-    const match = body.match(pattern)
+    const match = plainBody.match(pattern)
     if (match) {
       result.company = match[1].trim()
       break
@@ -350,10 +367,21 @@ export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplicatio
     /job title[:\s]+(.+?)(?:\n|$)/i
   ]
   for (const pattern of rolePatterns) {
-    const match = body.match(pattern)
+    const match = plainBody.match(pattern)
     if (match) {
       result.role = match[1].trim()
       break
+    }
+  }
+
+  if (!result.company || !result.role) {
+    const subjectCompanyMatch = subject.match(/applied to (.+?)(?:\s+for|$)/i)
+    if (subjectCompanyMatch && !result.company) {
+      result.company = subjectCompanyMatch[1].trim()
+    }
+    const subjectRoleMatch = subject.match(/for\s+(.+?)(?:\s+at\s+|$)/i)
+    if (subjectRoleMatch && !result.role) {
+      result.role = subjectRoleMatch[1].trim()
     }
   }
 
@@ -363,7 +391,7 @@ export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplicatio
     /date[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i
   ]
   for (const pattern of datePatterns) {
-    const match = body.match(pattern)
+    const match = plainBody.match(pattern)
     if (match) {
       const parsed = new Date(match[1])
       if (!isNaN(parsed.getTime())) {
@@ -378,7 +406,7 @@ export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplicatio
     /https?:\/\/[^\s<>"]+\/(?:jobs|positions|apply|details)[^\s<>"]*/i
   ]
   for (const pattern of urlPatterns) {
-    const match = body.match(pattern)
+    const match = plainBody.match(pattern)
     if (match) {
       result.job_url = match[0]
       break
@@ -389,7 +417,7 @@ export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplicatio
     /\$[\d,]+(?:\s*-\s*\$[\d,]+)?(?:\s*\/year|\s*k)?/i
   ]
   for (const pattern of salaryPatterns) {
-    const match = body.match(pattern)
+    const match = plainBody.match(pattern)
     if (match) {
       result.salary_range = match[0]
       break
@@ -401,13 +429,13 @@ export function parseGenericEmail(email: EmailMessage): Partial<ParsedApplicatio
     /(?:remote|hybrid|on-site|onsite)[:\s]*(.+?)(?:\n|$)/i
   ]
   for (const pattern of locationPatterns) {
-    const match = body.match(pattern)
+    const match = plainBody.match(pattern)
     if (match) {
       result.location = match[1].trim()
       break
     }
   }
-  if (!result.location && body.toLowerCase().includes("remote")) {
+  if (!result.location && plainBody.toLowerCase().includes("remote")) {
     result.location = "Remote"
   }
 

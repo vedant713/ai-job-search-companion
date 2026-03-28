@@ -395,12 +395,22 @@ export const localDb = {
   },
 }
 
+function sanitizeHtml(str: string | undefined | null): string | undefined {
+  if (!str) return undefined
+  let cleaned = str.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n')
+  cleaned = cleaned.replace(/<[^>]*>/g, '')
+  cleaned = cleaned.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  cleaned = cleaned.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+  cleaned = cleaned.trim().replace(/\s+/g, ' ')
+  return cleaned || undefined
+}
+
 function mapApplicationRow(row: any): Application {
   return {
     id: row.id,
     user_id: row.user_id,
-    company: row.company,
-    role: row.role,
+    company: sanitizeHtml(row.company) || row.company,
+    role: sanitizeHtml(row.role) || row.role,
     status: row.status,
     date_applied: row.date_applied || undefined,
     notes: row.notes || undefined,
