@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Radar,
   RadarChart,
@@ -30,52 +32,52 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts"
-import { Plus, Brain, Edit, Trash2, Upload, TrendingUp, Target, Sparkles, BookOpen } from "lucide-react"
+import { Plus, Brain, Edit, Trash2, Upload, TrendingUp, Target, Sparkles, BookOpen, Loader2, Layers } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import type { Skill } from "@/lib/supabase"
 
-const aiRecommendations = [
-  {
-    skill: "AWS",
-    reason: "High demand in your target companies",
-    priority: "High",
-    resources: ["AWS Certified Solutions Architect", "A Cloud Guru"],
-    category: "Cloud",
-  },
-  {
-    skill: "Docker",
-    reason: "Essential for DevOps roles",
-    priority: "Medium",
-    resources: ["Docker Official Tutorial", "Kubernetes Basics"],
-    category: "DevOps",
-  },
-  {
-    skill: "GraphQL",
-    reason: "Emerging technology in your field",
-    priority: "Low",
-    resources: ["GraphQL Official Docs", "Apollo GraphQL"],
-    category: "Full Stack",
-  },
-]
+interface SuggestedSkill {
+  skill_name: string
+  category: string
+  suggested_proficiency: number
+  suggested_target: number
+  frequency: number
+  found_in_roles: string[]
+  reason: string
+}
+
+interface AIRecommendation {
+  skill: string
+  category: string
+  reason: string
+  priority: "High" | "Medium" | "Low"
+  resources: string[]
+}
 
 export default function SkillsPage() {
   const [skills, setSkills] = useState<Skill[]>([])
   const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isParseDialogOpen, setIsParseDialogOpen] = useState(false)
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null)
   const [newSkill, setNewSkill] = useState({
     skill_name: "",
     proficiency: 0,
-    target_proficiency: 0,
+    target_proficiency: 70,
   })
+  const [parseLoading, setParseLoading] = useState(false)
+  const [suggestedSkills, setSuggestedSkills] = useState<SuggestedSkill[]>([])
+  const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([])
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
+  const [parseResult, setParseResult] = useState<{ totalApplications: number; alreadyTracked: any[] } | null>(null)
 
   const { user, isLocalMode } = useAuth()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (user && !isLocalMode) {
+    if (user || isLocalMode) {
       fetchSkills()
     } else {
       setLoading(false)
@@ -84,14 +86,20 @@ export default function SkillsPage() {
 
   const fetchSkills = async () => {
     try {
-      const { data, error } = await supabase
-        .from("skills")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false })
+      if (isLocalMode) {
+        const response = await fetch("/api/local/skills")
+        const { skills: localSkills } = await response.json()
+        setSkills(localSkills || [])
+      } else {
+        const { data, error } = await supabase
+          .from("skills")
+          .select("*")
+          .eq("user_id", user?.id)
+          .order("created_at", { ascending: false })
 
-      if (error) throw error
-      setSkills(data || [])
+        if (error) throw error
+        setSkills(data || [])
+      }
     } catch (error: any) {
       console.error("Error fetching skills:", error)
       toast({
@@ -104,29 +112,54 @@ export default function SkillsPage() {
     }
   }
 
-  const handleAddSkill = async () => {
-    if (!user) return
+  const fetchSkillsLocal = async () => {
+    try {
+      const response = await fetch("/api/local/skills")
+      const { skills: localSkills } = await response.json()
+      setSkills(localSkills || [])
+    } catch (error: any) {
+      console.error("Error fetching local skills:", error)
+    }
+  }
+
+  const handleAddSkill = async (skillData?: { skill_name: string; proficiency: number; target_proficiency: number }) => {
+    const skillToAdd = skillData || newSkill
 
     try {
-      const { data, error } = await supabase
-        .from("skills")
-        .insert({
-          ...newSkill,
-          user_id: user.id,
+      if (isLocalMode) {
+        const response = await fetch("/api/local/skills", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(skillToAdd),
         })
-        .select()
-        .single()
+        const { skill } = await response.json()
+        setSkills([skill, ...skills])
+        toast({
+          title: "Success",
+          description: `${skill.skill_name} added successfully`,
+        })
+      } else {
+        const { data, error } = await supabase
+          .from("skills")
+          .insert({
+            ...skillToAdd,
+            user_id: user?.id,
+          })
+          .select()
+          .single()
 
-      if (error) throw error
+        if (error) throw error
+        setSkills([data, ...skills])
+        toast({
+          title: "Success",
+          description: "Skill added successfully",
+        })
+      }
 
-      setSkills([data, ...skills])
-      setNewSkill({ skill_name: "", proficiency: 0, target_proficiency: 0 })
-      setIsAddDialogOpen(false)
-
-      toast({
-        title: "Success",
-        description: "Skill added successfully",
-      })
+      if (!skillData) {
+        setNewSkill({ skill_name: "", proficiency: 0, target_proficiency: 70 })
+        setIsAddDialogOpen(false)
+      }
     } catch (error: any) {
       console.error("Error adding skill:", error)
       toast({
@@ -141,20 +174,33 @@ export default function SkillsPage() {
     if (!editingSkill) return
 
     try {
-      const { data, error } = await supabase
-        .from("skills")
-        .update({
-          skill_name: editingSkill.skill_name,
-          proficiency: editingSkill.proficiency,
-          target_proficiency: editingSkill.target_proficiency,
+      if (isLocalMode) {
+        const response = await fetch(`/api/local/skills/${editingSkill.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            skill_name: editingSkill.skill_name,
+            proficiency: editingSkill.proficiency,
+            target_proficiency: editingSkill.target_proficiency,
+          }),
         })
-        .eq("id", editingSkill.id)
-        .select()
-        .single()
+        const { skill } = await response.json()
+        setSkills(skills.map((s) => (s.id === editingSkill.id ? skill : s)))
+      } else {
+        const { data, error } = await supabase
+          .from("skills")
+          .update({
+            skill_name: editingSkill.skill_name,
+            proficiency: editingSkill.proficiency,
+            target_proficiency: editingSkill.target_proficiency,
+          })
+          .eq("id", editingSkill.id)
+          .select()
+          .single()
 
-      if (error) throw error
-
-      setSkills(skills.map((skill) => (skill.id === editingSkill.id ? data : skill)))
+        if (error) throw error
+        setSkills(skills.map((skill) => (skill.id === editingSkill.id ? data : skill)))
+      }
       setEditingSkill(null)
 
       toast({
@@ -173,9 +219,11 @@ export default function SkillsPage() {
 
   const handleDeleteSkill = async (skillId: string) => {
     try {
-      const { error } = await supabase.from("skills").delete().eq("id", skillId)
-
-      if (error) throw error
+      if (isLocalMode) {
+        await fetch(`/api/local/skills/${skillId}`, { method: "DELETE" })
+      } else {
+        await supabase.from("skills").delete().eq("id", skillId)
+      }
 
       setSkills(skills.filter((skill) => skill.id !== skillId))
 
@@ -191,6 +239,74 @@ export default function SkillsPage() {
         variant: "destructive",
       })
     }
+  }
+
+  const handleParseFromApplications = async () => {
+    setParseLoading(true)
+    setSuggestedSkills([])
+    setAiRecommendations([])
+    setSelectedSuggestions(new Set())
+    setParseResult(null)
+    setIsParseDialogOpen(true)
+
+    try {
+      const response = await fetch("/api/local/skills/parse")
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      setSuggestedSkills(data.suggestedSkills || [])
+      setAiRecommendations(data.aiRecommendations || [])
+      setParseResult({
+        totalApplications: data.totalApplications || 0,
+        alreadyTracked: data.alreadyTracked || []
+      })
+    } catch (error: any) {
+      console.error("Error parsing skills:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to parse skills from applications",
+        variant: "destructive",
+      })
+    } finally {
+      setParseLoading(false)
+    }
+  }
+
+  const handleToggleSuggestion = (skillName: string) => {
+    const newSelected = new Set(selectedSuggestions)
+    if (newSelected.has(skillName)) {
+      newSelected.delete(skillName)
+    } else {
+      newSelected.add(skillName)
+    }
+    setSelectedSuggestions(newSelected)
+  }
+
+  const handleAddSelectedSuggestions = async () => {
+    const skillsToAdd = suggestedSkills.filter(s => selectedSuggestions.has(s.skill_name))
+
+    for (const skill of skillsToAdd) {
+      await handleAddSkill({
+        skill_name: skill.skill_name,
+        proficiency: skill.suggested_proficiency,
+        target_proficiency: skill.suggested_target,
+      })
+    }
+
+    setSelectedSuggestions(new Set())
+    setIsParseDialogOpen(false)
+  }
+
+  const handleAddAIRecommendation = (rec: AIRecommendation) => {
+    setNewSkill({
+      skill_name: rec.skill,
+      proficiency: 0,
+      target_proficiency: 70,
+    })
+    setIsAddDialogOpen(true)
   }
 
   const radarData = skills.map((skill) => ({
@@ -213,6 +329,14 @@ export default function SkillsPage() {
           <p className="text-muted-foreground mt-1 text-lg">Track your growth and bridge the gap to your dream role</p>
         </div>
         <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white transition-colors"
+            onClick={handleParseFromApplications}
+          >
+            <Layers className="mr-2 h-4 w-4" />
+            Parse from Applications
+          </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-105">
@@ -265,16 +389,134 @@ export default function SkillsPage() {
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddSkill}>Add Skill</Button>
+                <Button onClick={() => handleAddSkill()}>Add Skill</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" className="border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white transition-colors">
-            <Upload className="mr-2 h-4 w-4" />
-            Parse from Resume
-          </Button>
         </div>
       </div>
+
+      {/* Parse from Applications Dialog */}
+      <Dialog open={isParseDialogOpen} onOpenChange={setIsParseDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] glass-card border-white/10 max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Parse Skills from Applications
+            </DialogTitle>
+            <DialogDescription>
+              {parseResult
+                ? `Analyzed ${parseResult.totalApplications} applications to find relevant skills`
+                : "Extract skills automatically from your job applications"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {parseLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground">Analyzing your applications...</p>
+            </div>
+          ) : suggestedSkills.length === 0 && aiRecommendations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Sparkles className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <p className="text-lg font-medium mb-2">No new skills found</p>
+              <p className="text-muted-foreground text-sm">
+                Either all detected skills are already tracked, or add more details to your applications.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6 py-4">
+              {suggestedSkills.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Suggested Skills ({suggestedSkills.length})</h3>
+                    {selectedSuggestions.size > 0 && (
+                      <Button size="sm" onClick={handleAddSelectedSuggestions}>
+                        Add {selectedSuggestions.size} Selected
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    {suggestedSkills.map((suggestion) => (
+                      <div
+                        key={suggestion.skill_name}
+                        className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                          selectedSuggestions.has(suggestion.skill_name)
+                            ? "border-primary/50 bg-primary/10"
+                            : "border-white/5 bg-white/5 hover:bg-white/10"
+                        }`}
+                        onClick={() => handleToggleSuggestion(suggestion.skill_name)}
+                      >
+                        <Checkbox
+                          checked={selectedSuggestions.has(suggestion.skill_name)}
+                          className="mt-0.5 border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{suggestion.skill_name}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 border-white/10">
+                              {suggestion.category}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">{suggestion.reason}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Current: {suggestion.suggested_proficiency}%</span>
+                            <span>Target: {suggestion.suggested_target}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiRecommendations.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-purple-400" />
+                    AI Recommendations
+                  </h3>
+                  <div className="grid gap-2">
+                    {aiRecommendations.map((rec, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg border border-purple-500/20 bg-purple-500/5"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{rec.skill}</span>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0.5 ${
+                                rec.priority === "High"
+                                  ? "bg-red-500/10 text-red-500 border-red-500/20"
+                                  : rec.priority === "Medium"
+                                  ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                                  : "bg-green-500/10 text-green-500 border-green-500/20"
+                              }`}
+                            >
+                              {rec.priority}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{rec.reason}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="hover:bg-purple-500/20"
+                          onClick={() => handleAddAIRecommendation(rec)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Skills Overview */}
       {skills.length > 0 ? (
@@ -374,10 +616,16 @@ export default function SkillsPage() {
             <p className="text-muted-foreground mb-6 max-w-sm">
               Add skills to visualize your proficiency and identify areas for growth.
             </p>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Your First Skill
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleParseFromApplications}>
+                <Layers className="mr-2 h-4 w-4" />
+                Parse from Applications
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Your First Skill
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -414,12 +662,16 @@ export default function SkillsPage() {
                     <span className="text-muted-foreground">Proficiency</span>
                     <span className="font-medium">{skill.proficiency}%</span>
                   </div>
-                  <Progress value={skill.proficiency} className="h-1.5 bg-white/10 mb-4" indicatorClassName={skill.proficiency >= (skill.target_proficiency || skill.proficiency) ? "bg-green-500" : "bg-primary"} />
+                  <Progress
+                    value={skill.proficiency}
+                    className="h-1.5 bg-white/10 mb-4"
+                    indicatorClassName={skill.proficiency >= (skill.target_proficiency || skill.proficiency) ? "bg-green-500" : "bg-primary"}
+                  />
 
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Target className="h-3 w-3" />
-                      <span>Target: {skill.target_proficiency}%</span>
+                      <span>Target: {skill.target_proficiency || 0}%</span>
                     </div>
                     <Badge
                       variant="outline"
@@ -456,32 +708,34 @@ export default function SkillsPage() {
                   className="bg-white/5 border-white/10"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-proficiency" className="text-muted-foreground">Current Proficiency (0-100)</Label>
-                <Input
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <Label htmlFor="edit-proficiency" className="text-muted-foreground">Current Proficiency</Label>
+                  <span className="font-medium">{editingSkill.proficiency}%</span>
+                </div>
+                <Slider
                   id="edit-proficiency"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={editingSkill.proficiency}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, proficiency: Number.parseInt(e.target.value) || 0 })
-                  }
-                  className="bg-white/5 border-white/10"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[editingSkill.proficiency]}
+                  onValueChange={(value) => setEditingSkill({ ...editingSkill, proficiency: value[0] })}
+                  className="py-2"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-target" className="text-muted-foreground">Target Proficiency (0-100)</Label>
-                <Input
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <Label htmlFor="edit-target" className="text-muted-foreground">Target Proficiency</Label>
+                  <span className="font-medium">{editingSkill.target_proficiency || 0}%</span>
+                </div>
+                <Slider
                   id="edit-target"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={editingSkill.target_proficiency || 0}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, target_proficiency: Number.parseInt(e.target.value) || 0 })
-                  }
-                  className="bg-white/5 border-white/10"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[editingSkill.target_proficiency || 0]}
+                  onValueChange={(value) => setEditingSkill({ ...editingSkill, target_proficiency: value[0] })}
+                  className="py-2"
                 />
               </div>
             </div>
@@ -503,53 +757,59 @@ export default function SkillsPage() {
           <CardDescription>Personalized suggestions based on your career goals and market trends</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {aiRecommendations.map((rec, index) => (
-              <div key={index} className="flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity scale-150 rotate-12">
-                  <Sparkles className="h-24 w-24 text-white" />
-                </div>
-                <div className="flex items-start justify-between mb-3 z-10">
-                  <div>
-                    <h3 className="font-bold text-lg">{rec.skill}</h3>
-                    <span className="text-xs text-muted-foreground">{rec.category}</span>
+          {aiRecommendations.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {aiRecommendations.map((rec, index) => (
+                <div key={index} className="flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity scale-150 rotate-12">
+                    <Sparkles className="h-24 w-24 text-white" />
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={`
-                      ${rec.priority === "High" ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                        rec.priority === "Medium" ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
-                          "bg-green-500/10 text-green-500 border-green-500/20"}
-                    `}
-                  >
-                    {rec.priority} Priority
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 z-10 flex-grow leading-relaxed">{rec.reason}</p>
+                  <div className="flex items-start justify-between mb-3 z-10">
+                    <div>
+                      <h3 className="font-bold text-lg">{rec.skill}</h3>
+                      <span className="text-xs text-muted-foreground">{rec.category}</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`
+                        ${rec.priority === "High" ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                          rec.priority === "Medium" ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                            "bg-green-500/10 text-green-500 border-green-500/20"}
+                      `}
+                    >
+                      {rec.priority} Priority
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4 z-10 flex-grow leading-relaxed">{rec.reason}</p>
 
-                <div className="space-y-3 z-10">
-                  <div className="flex flex-wrap gap-1.5">
-                    {rec.resources.map((resource, idx) => (
-                      <span key={idx} className="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/5 text-muted-foreground">
-                        {resource}
-                      </span>
-                    ))}
+                  <div className="space-y-3 z-10">
+                    <div className="flex flex-wrap gap-1.5">
+                      {rec.resources.map((resource, idx) => (
+                        <span key={idx} className="text-[10px] px-2 py-1 rounded bg-white/5 border border-white/5 text-muted-foreground">
+                          {resource}
+                        </span>
+                      ))}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full bg-white/10 hover:bg-white/20 border border-white/5 text-foreground shadow-none"
+                      onClick={() => handleAddAIRecommendation(rec)}
+                    >
+                      <Plus className="mr-2 h-3.5 w-3.5" />
+                      Add to Skills
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    className="w-full bg-white/10 hover:bg-white/20 border border-white/5 text-foreground shadow-none"
-                    onClick={() => {
-                      setNewSkill({ skill_name: rec.skill, proficiency: 0, target_proficiency: 70 })
-                      setIsAddDialogOpen(true)
-                    }}
-                  >
-                    <Plus className="mr-2 h-3.5 w-3.5" />
-                    Add to Skills
-                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Brain className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground">
+                Add more job applications to get AI-powered skill recommendations
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

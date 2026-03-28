@@ -56,7 +56,7 @@ export default function ApplicationsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    if (user && !isLocalMode) {
+    if (user || isLocalMode) {
       fetchApplications()
     } else {
       setLoading(false)
@@ -65,14 +65,29 @@ export default function ApplicationsPage() {
 
   const fetchApplications = async () => {
     try {
-      const { data, error } = await supabase
-        .from("applications")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false })
+      if (isLocalMode) {
+        const response = await fetch("/api/local/applications")
+        const { applications: localApps } = await response.json()
+        const mappedApps = localApps.map((app: any) => ({
+          ...app,
+          company: app.company || "Unknown Company",
+          role: app.role || "Unknown Role",
+          status: app.status || "Applied",
+          date_applied: app.date_applied || app.created_at,
+          created_at: app.created_at || app.date_applied,
+          updated_at: app.updated_at || app.date_applied,
+        }))
+        setApplications(mappedApps)
+      } else {
+        const { data, error } = await supabase
+          .from("applications")
+          .select("*")
+          .eq("user_id", user?.id)
+          .order("created_at", { ascending: false })
 
-      if (error) throw error
-      setApplications(data || [])
+        if (error) throw error
+        setApplications(data || [])
+      }
     } catch (error: any) {
       console.error("Error fetching applications:", error)
       toast({
@@ -535,7 +550,7 @@ export default function ApplicationsPage() {
                           {application.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{new Date(application.date_applied).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{(application as any).date_applied ? new Date((application as any).date_applied).toLocaleDateString() : "-"}</TableCell>
                       <TableCell className="max-w-xs truncate text-muted-foreground text-sm italic">{application.notes || "-"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

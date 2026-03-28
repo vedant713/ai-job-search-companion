@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import ReactMarkdown from "react-markdown"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -183,7 +184,9 @@ export default function AIAssistantPage() {
                             : "bg-muted dark:bg-gray-700 text-foreground"
                         }`}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <div className="text-sm prose prose-invert max-w-none dark:prose-invert">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
                         <p className="text-xs opacity-70 mt-1">
                           {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>

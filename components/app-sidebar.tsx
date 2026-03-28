@@ -1,4 +1,4 @@
-import { Home, Settings, BarChart3, CheckSquare, Bot, Briefcase, User, LogOut, Search, Sparkles } from "lucide-react"
+import { Home, Settings, BarChart3, CheckSquare, Bot, Briefcase, User, LogOut, Search, Sparkles, Mail } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +27,11 @@ const items = [
     title: "Applications",
     url: "/dashboard/applications",
     icon: Briefcase,
+  },
+  {
+    title: "Email Import",
+    url: "/dashboard/email-import",
+    icon: Mail,
   },
   {
     title: "Job Recommendations",

@@ -49,7 +49,7 @@ export default function TodosPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    if (user && !isLocalMode) {
+    if (user || isLocalMode) {
       fetchTasks()
     } else {
       setLoading(false)
@@ -58,14 +58,32 @@ export default function TodosPage() {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false })
+      if (isLocalMode) {
+        const response = await fetch("/api/local/tasks")
+        const { tasks: localTasks } = await response.json()
+        const mappedTasks = localTasks.map((task: any) => ({
+          ...task,
+          description: task.description || "",
+          due_date: task.due_date || null,
+          is_complete: Boolean(task.is_complete),
+          priority: task.priority || "Medium",
+          tags: task.tags || [],
+          context: task.context || null,
+          status: task.status || "todo",
+          created_at: task.created_at,
+          updated_at: task.updated_at,
+        }))
+        setTasks(mappedTasks)
+      } else {
+        const { data, error } = await supabase
+          .from("tasks")
+          .select("*")
+          .eq("user_id", user?.id)
+          .order("created_at", { ascending: false })
 
-      if (error) throw error
-      setTasks(data || [])
+        if (error) throw error
+        setTasks(data || [])
+      }
     } catch (error: any) {
       console.error("Error fetching tasks:", error)
       toast({
@@ -82,31 +100,54 @@ export default function TodosPage() {
     if (!user) return
 
     try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({
-          ...newTask,
-          user_id: user.id,
-          due_date: newTask.due_date || null,
+      if (isLocalMode) {
+        const response = await fetch("/api/local/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...newTask,
+            due_date: newTask.due_date || null,
+            status: "todo",
+            is_complete: false,
+          }),
         })
-        .select()
-        .single()
+        const { task } = await response.json()
+        setTasks([task, ...tasks])
+        setNewTask({
+          description: "",
+          due_date: "",
+          priority: "Medium",
+          context: "",
+        })
+        setIsAddDialogOpen(false)
+        toast({ title: "Success", description: "Task added successfully" })
+      } else {
+        const { data, error } = await supabase
+          .from("tasks")
+          .insert({
+            ...newTask,
+            user_id: user.id,
+            due_date: newTask.due_date || null,
+          })
+          .select()
+          .single()
 
-      if (error) throw error
+        if (error) throw error
 
-      setTasks([data, ...tasks])
-      setNewTask({
-        description: "",
-        due_date: "",
-        priority: "Medium",
-        context: "",
-      })
-      setIsAddDialogOpen(false)
+        setTasks([data, ...tasks])
+        setNewTask({
+          description: "",
+          due_date: "",
+          priority: "Medium",
+          context: "",
+        })
+        setIsAddDialogOpen(false)
 
-      toast({
-        title: "Success",
-        description: "Task added successfully",
-      })
+        toast({
+          title: "Success",
+          description: "Task added successfully",
+        })
+      }
     } catch (error: any) {
       console.error("Error adding task:", error)
       toast({
@@ -119,26 +160,43 @@ export default function TodosPage() {
 
   const handleToggleComplete = async (taskId: string, isComplete: boolean) => {
     try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({
-          is_complete: isComplete,
-          status: isComplete ? "completed" : "todo",
+      if (isLocalMode) {
+        await fetch(`/api/local/tasks/${taskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            is_complete: isComplete,
+            status: isComplete ? "completed" : "todo",
+          }),
         })
-        .eq("id", taskId)
+        setTasks(
+          tasks.map((task) =>
+            task.id === taskId ? { ...task, is_complete: isComplete, status: isComplete ? "completed" : "todo" } : task,
+          ),
+        )
+        toast({ title: "Success", description: `Task ${isComplete ? "completed" : "reopened"}` })
+      } else {
+        const { error } = await supabase
+          .from("tasks")
+          .update({
+            is_complete: isComplete,
+            status: isComplete ? "completed" : "todo",
+          })
+          .eq("id", taskId)
 
-      if (error) throw error
+        if (error) throw error
 
-      setTasks(
-        tasks.map((task) =>
-          task.id === taskId ? { ...task, is_complete: isComplete, status: isComplete ? "completed" : "todo" } : task,
-        ),
-      )
+        setTasks(
+          tasks.map((task) =>
+            task.id === taskId ? { ...task, is_complete: isComplete, status: isComplete ? "completed" : "todo" } : task,
+          ),
+        )
 
-      toast({
-        title: "Success",
-        description: `Task ${isComplete ? "completed" : "reopened"}`,
-      })
+        toast({
+          title: "Success",
+          description: `Task ${isComplete ? "completed" : "reopened"}`,
+        })
+      }
     } catch (error: any) {
       console.error("Error updating task:", error)
       toast({
@@ -151,16 +209,22 @@ export default function TodosPage() {
 
   const handleDeleteTask = async (taskId: string) => {
     try {
-      const { error } = await supabase.from("tasks").delete().eq("id", taskId)
+      if (isLocalMode) {
+        await fetch(`/api/local/tasks/${taskId}`, { method: "DELETE" })
+        setTasks(tasks.filter((task) => task.id !== taskId))
+        toast({ title: "Success", description: "Task deleted successfully" })
+      } else {
+        const { error } = await supabase.from("tasks").delete().eq("id", taskId)
 
-      if (error) throw error
+        if (error) throw error
 
-      setTasks(tasks.filter((task) => task.id !== taskId))
+        setTasks(tasks.filter((task) => task.id !== taskId))
 
-      toast({
-        title: "Success",
-        description: "Task deleted successfully",
-      })
+        toast({
+          title: "Success",
+          description: "Task deleted successfully",
+        })
+      }
     } catch (error: any) {
       console.error("Error deleting task:", error)
       toast({

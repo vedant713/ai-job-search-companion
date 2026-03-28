@@ -34,3 +34,52 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create task" }, { status: 500 })
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    await initializeLocalDb()
+    const data = await request.json()
+    const { id, description, due_date, is_complete, priority, tags, context, status } = data
+
+    if (!id) {
+      return NextResponse.json({ error: "Task ID is required" }, { status: 400 })
+    }
+
+    const updatedTask = localDb.tasks.update(id, {
+      description,
+      due_date,
+      is_complete,
+      priority,
+      tags,
+      context,
+      status,
+    })
+
+    if (!updatedTask) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ task: updatedTask })
+  } catch (error) {
+    console.error("Error updating task:", error)
+    return NextResponse.json({ error: "Failed to update task" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await initializeLocalDb()
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+
+    if (!id) {
+      return NextResponse.json({ error: "Task ID is required" }, { status: 400 })
+    }
+
+    localDb.tasks.delete(id)
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting task:", error)
+    return NextResponse.json({ error: "Failed to delete task" }, { status: 500 })
+  }
+}

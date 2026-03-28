@@ -254,6 +254,40 @@ export const localDb = {
       sqlite.prepare("DELETE FROM applications WHERE id = ?").run(id)
       return true
     },
+    bulkCreate: (applicationsData: Array<Omit<Application, "id" | "user_id" | "created_at" | "updated_at">>): Application[] => {
+      const sqlite = getDb()
+      const now = new Date().toISOString()
+      const created: Application[] = []
+      
+      const insertStmt = sqlite.prepare(`
+        INSERT INTO applications (id, user_id, company, role, status, date_applied, notes, job_url, salary_range, location, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+
+      for (const data of applicationsData) {
+        const id = uuidv4()
+        insertStmt.run(
+          id, 
+          LOCAL_USER_ID, 
+          data.company, 
+          data.role, 
+          data.status, 
+          data.date_applied || null, 
+          data.notes || null, 
+          data.job_url || null, 
+          data.salary_range || null, 
+          data.location || null, 
+          now, 
+          now
+        )
+        const result = sqlite.prepare("SELECT * FROM applications WHERE id = ?").get(id)
+        if (result) {
+          created.push(mapApplicationRow(result))
+        }
+      }
+      
+      return created
+    },
   },
 
   skills: {

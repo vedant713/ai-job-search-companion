@@ -45,8 +45,12 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (user && !isLocalMode) {
-      fetchDashboardData()
+    if (user || isLocalMode) {
+      if (isLocalMode) {
+        fetchLocalDashboardData()
+      } else {
+        fetchDashboardData()
+      }
     } else {
       setLoading(false)
     }
@@ -132,6 +136,25 @@ export default function DashboardPage() {
       toast({
         title: "Error",
         description: "Failed to fetch dashboard data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchLocalDashboardData = async () => {
+    try {
+      const response = await fetch("/api/local/stats")
+      if (!response.ok) throw new Error("Failed to fetch local stats")
+      const data = await response.json()
+      setStats(data)
+      setRecentTasks([])
+    } catch (error: any) {
+      console.error("Error fetching local dashboard data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch local dashboard data",
         variant: "destructive",
       })
     } finally {
