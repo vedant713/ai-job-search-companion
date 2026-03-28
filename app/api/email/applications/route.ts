@@ -12,9 +12,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid applications data" }, { status: 400 })
     }
 
+    // Get existing applications to check for duplicates
+    const existing = localDb.applications.getAll()
+    const existingKeys = new Set(
+      existing.map((app) => `${app.company.toLowerCase().trim()}|${app.role.toLowerCase().trim()}`)
+    )
+
     const created: any[] = []
+    const skipped: number = 0
 
     for (const app of applications) {
+      const key = `${app.company.toLowerCase().trim()}|${app.role.toLowerCase().trim()}`
+      
+      // Skip if company or role is "Unknown" or empty, or if duplicate exists
+      if (!app.company || app.company === "Unknown Company" || 
+          !app.role || app.role === "Unknown Role" ||
+          existingKeys.has(key)) {
+        continue
+      }
+      
+      existingKeys.add(key) // Add to set to catch duplicates within the import batch
+
       const createdApp = localDb.applications.create({
         company: app.company,
         role: app.role,
@@ -31,6 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: true, 
       imported: created.length,
+      skipped: applications.length - created.length,
       applications: created 
     })
   } catch (error) {

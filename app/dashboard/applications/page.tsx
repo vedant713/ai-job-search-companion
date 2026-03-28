@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2, Search, Briefcase, Filter, X } from "lucide-react"
+import { Plus, Edit, Trash2, Search, Briefcase, Filter, X, Download } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkOperations } from "@/components/bulk-operations"
 import { useAuth } from "@/components/auth-provider"
@@ -342,6 +342,31 @@ setApplications(mappedApps)
     }
   }
 
+  const exportToCSV = () => {
+    const headers = ["Company", "Role", "Status", "Applied On", "Notes", "Job URL", "Salary Range", "Location"]
+    const csvContent = [
+      headers.join(","),
+      ...filteredApplications.map((app) =>
+        [
+          `"${(app.company || "").replace(/"/g, '""')}"`,
+          `"${(app.role || "").replace(/"/g, '""')}"`,
+          `"${app.status || ""}"`,
+          `"${app.date_applied ? new Date(app.date_applied).toLocaleDateString() : ""}"`,
+          `"${(app.notes || "").replace(/"/g, '""')}"`,
+          `"${(app.job_url || "").replace(/"/g, '""')}"`,
+          `"${(app.salary_range || "").replace(/"/g, '""')}"`,
+          `"${(app.location || "").replace(/"/g, '""')}"`
+        ].join(",")
+      )
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = `applications_${new Date().toISOString().split("T")[0]}.csv`
+    link.click()
+  }
+
   const filteredApplications = applications.filter((app) => {
     try {
       const matchesSearch =
@@ -442,6 +467,10 @@ setApplications(mappedApps)
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Button variant="outline" onClick={exportToCSV} className="border-white/10">
+          <Download className="mr-2 h-4 w-4" />
+          Export CSV
+        </Button>
       </div>
 
       {/* Edit Dialog */}

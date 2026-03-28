@@ -61,9 +61,12 @@ export default function EmailImportPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [parsing, setParsing] = useState(false)
+  const [parseProgress, setParseProgress] = useState({ stage: "", current: 0, total: 0, message: "" })
+  const [parseApplications, setParseApplications] = useState<ParsedApplication[]>([])
   const [importing, setImporting] = useState(false)
   const [clientId, setClientId] = useState("")
   const [clientSecret, setClientSecret] = useState("")
+  const [emailLimit, setEmailLimit] = useState(100)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -134,8 +137,11 @@ export default function EmailImportPage() {
     if (!accessToken) return
 
     setParsing(true)
+    setParseProgress({ stage: "search", current: 0, total: 0, message: "Connecting to Gmail..." })
+    setParsedApplications([])
+    
     try {
-      const response = await fetch(`/api/email?action=parse`, {
+      const response = await fetch(`/api/email/parse-stream?limit=${emailLimit}`, {
         headers: { "x-access-token": accessToken }
       })
       
@@ -143,13 +149,45 @@ export default function EmailImportPage() {
         throw new Error("Failed to parse emails")
       }
 
-      const data = await response.json()
-      setParsedApplications(data.applications || [])
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
       
-      toast({
-        title: "Parsing Complete",
-        description: `Found ${data.applications?.length || 0} job applications`
-      })
+      if (!reader) throw new Error("No response body")
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const text = decoder.decode(value)
+        const lines = text.split("\n")
+        
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.stage === "done") {
+                console.log('[SSE] Done received, applications:', data.applications?.length, data.applications?.slice(0, 3))
+                setParsedApplications(data.applications || [])
+                setParseProgress(data)
+                toast({
+                  title: "Parsing Complete",
+                  description: data.message
+                })
+              } else if (data.stage === "error") {
+                toast({
+                  title: "Parse Failed",
+                  description: data.message,
+                  variant: "destructive"
+                })
+              } else {
+                setParseProgress(data)
+              }
+            } catch (e) {
+              console.error("Failed to parse SSE data:", e)
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error("Parse error:", error)
       toast({
@@ -446,6 +484,18 @@ export default function EmailImportPage() {
                     <p className="text-sm text-muted-foreground">Ready to parse job applications</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Label htmlFor="emailLimit" className="text-sm text-muted-foreground">Max emails to parse:</Label>
+                  <Input
+                    id="emailLimit"
+                    type="number"
+                    min="10"
+                    max="1000"
+                    value={emailLimit}
+                    onChange={(e) => setEmailLimit(Math.min(1000, Math.max(10, parseInt(e.target.value) || 100)))}
+                    className="w-24 bg-white/5 border-white/10"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     onClick={handleParse}
@@ -455,7 +505,12 @@ export default function EmailImportPage() {
                     {parsing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Parsing...
+                        {parseProgress.message || "Parsing..."}
+                        {parseProgress.total > 0 && (
+                          <span className="ml-2 text-xs opacity-70">
+                            ({parseProgress.current}/{parseProgress.total})
+                          </span>
+                        )}
                       </>
                     ) : (
                       <>
@@ -475,6 +530,31 @@ export default function EmailImportPage() {
               </div>
             </CardContent>
           </Card>
+
+          {parsing && parseProgress.stage !== "search" && (
+            <Card className="glass-card border-white/10 bg-gradient-to-br from-card/50 to-card/10">
+              <CardContent className="py-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{parseProgress.message}</span>
+                    {parseProgress.total > 0 && (
+                      <span className="text-primary font-medium">
+                        {Math.round((parseProgress.current / parseProgress.total) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                  {parseProgress.total > 0 && (
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300 rounded-full"
+                        style={{ width: `${(parseProgress.current / parseProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {parsedApplications.length > 0 && (
             <>

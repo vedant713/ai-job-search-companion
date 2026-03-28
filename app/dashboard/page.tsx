@@ -56,6 +56,22 @@ export default function DashboardPage() {
     }
   }, [user, isLocalMode])
 
+  // Refresh data when page becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && (user || isLocalMode)) {
+        if (isLocalMode) {
+          fetchLocalDashboardData()
+        } else {
+          fetchDashboardData()
+        }
+      }
+    }
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [user, isLocalMode])
+
   const fetchDashboardData = async () => {
     try {
       // Fetch applications

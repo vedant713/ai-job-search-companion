@@ -59,9 +59,22 @@ export function RealTimeAnalytics() {
         subscription.unsubscribe()
       }
     } else if (isLocalMode) {
-      setLoading(false)
+      fetchLocalAnalyticsData()
     }
   }, [user, isLocalMode])
+
+  const fetchLocalAnalyticsData = async () => {
+    try {
+      const response = await fetch("/api/local/analytics")
+      if (!response.ok) throw new Error("Failed to fetch local analytics")
+      const data = await response.json()
+      setData(data)
+    } catch (error) {
+      console.error("Error fetching local analytics:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchAnalyticsData = async () => {
     try {

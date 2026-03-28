@@ -85,7 +85,10 @@ const JOB_SITE_QUERIES = {
   indeed: '(subject:indeed AND (subject:apply OR subject:application OR subject:applied))',
   glassdoor: '(subject:glassdoor AND (subject:application OR subject:applied))',
   greenhouse: '(subject:greenhouse AND (subject:application OR subject:applied))',
-  lever: '(subject:lever AND (subject:application OR subject:applied))'
+  lever: '(subject:lever AND (subject:application OR subject:applied))',
+  workday: 'subject:workday',
+  ash: 'subject:ash OR from:ash.com',
+  generic: 'subject:"your application" OR subject:"application to" OR subject:"application for"'
 }
 
 function buildSearchQuery(): string {
@@ -93,7 +96,7 @@ function buildSearchQuery(): string {
   return queries.join(" OR ")
 }
 
-export async function searchJobEmails(accessToken: string, maxResults = 50): Promise<EmailMessage[]> {
+export async function searchJobEmails(accessToken: string, maxResults = 1000, onProgress?: (current: number, total: number) => void): Promise<EmailMessage[]> {
   const gmail = await getGmailClient(accessToken)
   const query = buildSearchQuery()
   
@@ -105,40 +108,53 @@ export async function searchJobEmails(accessToken: string, maxResults = 50): Pro
 
   const messages = response.data.messages || []
   const emails: EmailMessage[] = []
+  const total = messages.length
 
-  for (const msg of messages) {
-    const full = await gmail.users.messages.get({
-      userId: "me",
-      id: msg.id!,
-      format: "full"
-    })
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]
+    try {
+      const full = await gmail.users.messages.get({
+        userId: "me",
+        id: msg.id!,
+        format: "full"
+      })
 
-    const headers = full.data.payload?.headers || []
-    const getHeader = (name: string) => headers.find(h => h.name?.toLowerCase() === name.toLowerCase())?.value
+      const headers = full.data.payload?.headers || []
+      const getHeader = (name: string) => headers.find(h => h.name?.toLowerCase() === name.toLowerCase())?.value
 
-    const subject = getHeader("Subject") || ""
-    const from = getHeader("From") || ""
-    const date = getHeader("Date") || ""
+      const subject = getHeader("Subject") || ""
+      const from = getHeader("From") || ""
+      const date = getHeader("Date") || ""
 
-    let body = ""
-    if (full.data.payload?.parts) {
-      for (const part of full.data.payload.parts) {
-        if (part.body?.data) {
-          body += Buffer.from(part.body.data, "base64").toString("utf-8")
+      let body = ""
+      if (full.data.payload?.parts) {
+        for (const part of full.data.payload.parts) {
+          if (part.body?.data) {
+            body += Buffer.from(part.body.data, "base64").toString("utf-8")
+          }
         }
+      } else if (full.data.payload?.body?.data) {
+        body = Buffer.from(full.data.payload.body.data, "base64").toString("utf-8")
       }
-    } else if (full.data.payload?.body?.data) {
-      body = Buffer.from(full.data.payload.body.data, "base64").toString("utf-8")
-    }
 
-    emails.push({
-      id: msg.id!,
-      subject,
-      from,
-      date,
-      body,
-      snippet: full.data.snippet || ""
-    })
+      emails.push({
+        id: msg.id!,
+        subject,
+        from,
+        date,
+        body,
+        snippet: full.data.snippet || ""
+      })
+      
+      if (onProgress) {
+        onProgress(i + 1, total)
+      }
+    } catch (err) {
+      console.error(`Error fetching email ${msg.id}:`, err)
+      if (onProgress) {
+        onProgress(i + 1, total)
+      }
+    }
   }
 
   return emails

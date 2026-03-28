@@ -34,7 +34,12 @@ export async function GET() {
         responseRate: totalApplications > 0 
           ? Math.round(((offerCount + interviewingCount) / totalApplications) * 100) 
           : 0,
-        thisWeek: 0,
+        thisWeek: apps.filter((app) => {
+          const created = new Date(app.created_at)
+          const oneWeekAgo = new Date()
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+          return created >= oneWeekAgo
+        }).length,
       },
       tasks: {
         total: totalTasks,
